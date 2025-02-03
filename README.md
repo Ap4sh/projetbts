@@ -55,5 +55,3 @@ https://kshitiz.me/weather-app-using-openweathermap-api/
 https://github.com/dimasyotama/django-weather-app
 https://github.com/akrish4/Django-Weather-Web-App
 
-
-test
