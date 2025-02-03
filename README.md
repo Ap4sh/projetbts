@@ -54,3 +54,6 @@ https://kshitiz.me/weather-app-using-openweathermap-api/
 ça c'est stylé et ça utilise l'api gratos openweather donc on peut prendre exemple pour l'utilisation de l'api openweather c'est propre, sinon globalement sur github ya des tonnes de projets/d'exmples d'app météo et tout en django qui font comme nous
 https://github.com/dimasyotama/django-weather-app
 https://github.com/akrish4/Django-Weather-Web-App
+
+
+test
