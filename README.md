@@ -39,7 +39,7 @@ Objectif du projet : faire une application permettant aux utilisateurs de consul
 
 Échéance de livraison : 15 avril
 
-Chantiers et livrables attendus : Le premier livrable attendu est un PMP, un dossier comprenant notre diagramme de gantt, notre organigramme complet etc.. Puis, enfin, l’application en elle-même.
+Chantiers et livrables attendus : Le premier livrable attendu est un PMP, un dossier comprenant notre diagramme de gantt, notre organigramme complet etc.. Puis, enfin, l'application en elle-même.
 
 Plan de charge : 70 jours au total 
 
@@ -54,4 +54,82 @@ https://kshitiz.me/weather-app-using-openweathermap-api/
 ça c'est stylé et ça utilise l'api gratos openweather donc on peut prendre exemple pour l'utilisation de l'api openweather c'est propre, sinon globalement sur github ya des tonnes de projets/d'exmples d'app météo et tout en django qui font comme nous
 https://github.com/dimasyotama/django-weather-app
 https://github.com/akrish4/Django-Weather-Web-App
+
+# Installation et lancement
+
+## Installation
+
+1. cloner le projet etc (voir + haut)
+```bash
+git clone git@github.com:Ap4sh/projetbts.git
+cd projetbts
+```
+
+2. faire le fichier env
+```bash
+cp .env.example .env
+```
+
+3. docker de base
+```bash
+# stop les contenurs qui tournent
+docker-compose down -v
+
+# build les imgs
+docker-compose build
+
+# start conteneur
+docker-compose up -d
+```
+
+4. faire superuser django
+```bash
+docker-compose exec web python manage.py createsuperuser
+```
+
+## Utilisation
+
+1. app :
+- user : http://localhost:8000
+- admin : http://localhost:8000/admin
+
+2. pour stop l'app :
+```bash
+docker-compose down
+```
+
+## Cmd utiles
+
+Quelques commandes utiles :
+
+```bash
+# logs docker
+docker-compose logs -f
+
+# redem docker
+docker-compose restart web
+
+# exec des cmd DANS le docker
+docker-compose exec web python manage.py [commande]
+
+# cree une migr
+docker-compose exec web python manage.py makemigrations
+
+# appliquer migr
+docker-compose exec web python manage.py migrate
+```
+
+## Structure du projet
+```
+projetbts/
+├── meteo/              # cfg django
+├── weather/            # app meteo
+├── templates/          # template globaux
+├── static/             # static? ta mere si tu me demandes c quoi
+├── manage.py          # scr gestion django
+├── Dockerfile         # cfg docker
+└── docker-compose.yml # cfg docker compose (oui oui)
+```
+
+Atm rien de "vraiment" fonctionnel mais au moins on pose les bases et maintenant chacun peut dév sa partie tranquille.
 
