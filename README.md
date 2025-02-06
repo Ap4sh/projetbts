@@ -8,10 +8,10 @@ Projet BTS django
 ssh-keygen # Ajouter la clé publique ssh à votre profil
 
 # Cloner le repo
-git clone git@github.com:Ap4sh/projetbts.git^C
+git clone git@github.com:Ap4sh/projetbts.git
 
 # Pull les changements si il y en a eu (important à faire avant de commencer à dév ou push ou quoi)
-git pull origin main^C
+git pull origin main
 
 # Une fois que vous avez fait des changements, ajouter des fichiers etc vous pouvez faire:
 git add fichier # ou alors git add . (pour ajouter tout le dossier entier)
