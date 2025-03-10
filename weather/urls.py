@@ -6,4 +6,5 @@ app_name = 'weather'
 urlpatterns = [
     path('', views.home, name='home'),
     path('profile/', views.profile, name='profile'),
+    path('weather/<str:city>/', views.weather_detail, name='weather_detail'),
 ] 
