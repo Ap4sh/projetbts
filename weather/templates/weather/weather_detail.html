@@ -62,8 +62,9 @@
                     <h3>Alertes météo</h3>
                 </div>
                 <div class="card-body">
-                    {% if alerts %}
-                        {% for alert in alerts %}
+                    <h4>Alertes API</h4>
+                    {% if api_alerts %}
+                        {% for alert in api_alerts %}
                             <div class="alert alert-warning">
                                 <h5>{{ alert.event }}</h5>
                                 <p>{{ alert.description }}</p>
@@ -74,7 +75,20 @@
                             </div>
                         {% endfor %}
                     {% else %}
-                        <p class="text-muted">Aucune alerte météo en cours pour cette région.</p>
+                        <p class="text-muted">Aucune alerte météo API en cours pour cette région.</p>
+                    {% endif %}
+                    
+                    <h4 class="mt-4">Alertes base de données</h4>
+                    {% if db_alerts %}
+                        {% for alert in db_alerts %}
+                            <div class="alert alert-info">
+                                <h5>{{ alert.fk_type.label }}</h5>
+                                <p>{{ alert.description }}</p>
+                                <small>Date: {{ alert.date_alert|date:"d/m/Y" }}</small>
+                            </div>
+                        {% endfor %}
+                    {% else %}
+                        <p class="text-muted">Aucune alerte en base de données pour cette région.</p>
                     {% endif %}
                 </div>
             </div>

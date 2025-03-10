@@ -2,28 +2,50 @@ from django.db import models
 from django.contrib.auth.models import User
 
 class TypeAlert(models.Model):
-    nom = models.CharField(max_length=100)
-    description = models.TextField()
+    """
+    Modèle pour les types d'alertes météo.
+    Correspond à la table Type_alert dans la base de données.
+    """
+    id = models.AutoField(primary_key=True)
+    label = models.CharField(max_length=100)
     
+    class Meta:
+        db_table = 'Type_alert'
+        
     def __str__(self):
-        return self.nom
+        return self.label
 
 class Alert(models.Model):
-    type_alert = models.ForeignKey(TypeAlert, on_delete=models.CASCADE)
+    """
+    Modèle pour les alertes météo.
+    Correspond à la table Alerts dans la base de données.
+    """
+    id = models.AutoField(primary_key=True)
+    fk_type = models.ForeignKey(TypeAlert, on_delete=models.CASCADE, db_column='fk_type')
     region = models.CharField(max_length=100)
-    description = models.TextField()
-    date_debut = models.DateTimeField()
-    date_fin = models.DateTimeField()
-    created_at = models.DateTimeField(auto_now_add=True)
+    description = models.CharField(max_length=255)
+    active = models.IntegerField(default=1)
+    date_alert = models.DateField()
     
+    class Meta:
+        db_table = 'Alerts'
+        
     def __str__(self):
-        return f"{self.type_alert.nom} - {self.region}"
+        return f"{self.fk_type.label} - {self.region}"
 
-class UserProfile(models.Model):
-    user = models.OneToOneField(User, on_delete=models.CASCADE)
+class CustomUser(models.Model):
+    """
+    Modèle pour les utilisateurs personnalisés.
+    Correspond à la table Users dans la base de données.
+    """
+    id = models.AutoField(primary_key=True)
+    email = models.EmailField(max_length=255)
+    password = models.CharField(max_length=255)
+    city = models.CharField(max_length=100)
     region = models.CharField(max_length=100)
-    ville = models.CharField(max_length=100)
-    notifications_actives = models.BooleanField(default=True)
     
+    class Meta:
+        db_table = 'Users'
+        
     def __str__(self):
-        return self.user.username
+        return self.email

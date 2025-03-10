@@ -1,7 +1,7 @@
 import logging
 from django.core.management.base import BaseCommand
 from django.utils import timezone
-from weather.models import Alert, TypeAlert, UserProfile
+from weather.models import Alert, TypeAlert, CustomUser
 from weather.services.weather_api import OpenWeatherMapService
 from datetime import datetime, timedelta
 
@@ -14,7 +14,7 @@ class Command(BaseCommand):
         self.stdout.write('Vérification des alertes météo...')
         
         # Récupérer toutes les régions uniques des profils utilisateurs
-        regions = UserProfile.objects.values_list('region', flat=True).distinct()
+        regions = CustomUser.objects.values_list('region', flat=True).distinct()
         
         # Coordonnées approximatives pour les régions françaises
         # Ces coordonnées sont approximatives et devraient être améliorées
@@ -50,37 +50,34 @@ class Command(BaseCommand):
                     for alert_data in alerts:
                         # Trouver ou créer le type d'alerte
                         alert_type, created = TypeAlert.objects.get_or_create(
-                            nom=alert_data.get('event', 'Alerte météo'),
-                            defaults={'description': alert_data.get('description', '')}
+                            label=alert_data.get('event', 'Alerte météo')
                         )
                         
                         # Convertir les timestamps en datetime
-                        start_time = datetime.fromtimestamp(alert_data.get('start', timezone.now().timestamp()))
-                        end_time = datetime.fromtimestamp(alert_data.get('end', (timezone.now() + timedelta(days=1)).timestamp()))
+                        alert_date = datetime.fromtimestamp(alert_data.get('start', timezone.now().timestamp())).date()
                         
                         # Vérifier si une alerte similaire existe déjà
                         existing_alert = Alert.objects.filter(
-                            type_alert=alert_type,
+                            fk_type=alert_type,
                             region=region,
-                            date_debut=start_time,
-                            date_fin=end_time
+                            date_alert=alert_date
                         ).first()
                         
                         if not existing_alert:
                             # Créer une nouvelle alerte
                             Alert.objects.create(
-                                type_alert=alert_type,
+                                fk_type=alert_type,
                                 region=region,
-                                description=alert_data.get('description', ''),
-                                date_debut=start_time,
-                                date_fin=end_time
+                                description=alert_data.get('description', '')[:255],  # Limiter à 255 caractères
+                                active=1,
+                                date_alert=alert_date
                             )
                             self.stdout.write(self.style.SUCCESS(
-                                f'Nouvelle alerte créée pour {region}: {alert_type.nom}'
+                                f'Nouvelle alerte créée pour {region}: {alert_type.label}'
                             ))
                         else:
                             self.stdout.write(
-                                f'Alerte existante pour {region}: {alert_type.nom}'
+                                f'Alerte existante pour {region}: {alert_type.label}'
                             )
             else:
                 self.stdout.write(self.style.WARNING(

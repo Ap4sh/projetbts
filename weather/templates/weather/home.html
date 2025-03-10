@@ -7,8 +7,6 @@
     <div class="col-md-8">
         <h2>Météo en France</h2>
         <div id="map-container" class="mt-3">
-<<<<<<< HEAD
-=======
             <!-- La carte sera ajoutée ici par l'équipe responsable de la carte -->
             <p class="text-muted">Carte en cours de développement...</p>
         </div>
@@ -45,7 +43,6 @@
                     <p class="text-muted">Données météo non disponibles pour le moment.</p>
                 </div>
             {% endif %}
->>>>>>> 68de400 (Ajout de l'intégration de l'API OpenWeatherMap et des vues pour afficher les données météo)
         </div>
     </div>
     <div class="col-md-4">
@@ -54,9 +51,9 @@
             {% if alerts %}
                 {% for alert in alerts %}
                     <div class="list-group-item">
-                        <h5>{{ alert.type_alert.nom }}</h5>
+                        <h5>{{ alert.fk_type.label }}</h5>
                         <p>{{ alert.region }}</p>
-                        <small>{{ alert.date_debut|date:"d/m/Y H:i" }}</small>
+                        <small>{{ alert.date_alert|date:"d/m/Y" }}</small>
                     </div>
                 {% endfor %}
             {% else %}

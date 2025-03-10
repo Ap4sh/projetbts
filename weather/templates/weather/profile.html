@@ -13,17 +13,9 @@
                 <p><strong>Nom d'utilisateur:</strong> {{ user.username }}</p>
                 <p><strong>Email:</strong> {{ user.email }}</p>
                 
-                {% if user.userprofile %}
-                    <p><strong>Région:</strong> {{ user.userprofile.region }}</p>
-                    <p><strong>Ville:</strong> {{ user.userprofile.ville }}</p>
-                    <p>
-                        <strong>Notifications:</strong> 
-                        {% if user.userprofile.notifications_actives %}
-                            <span class="badge bg-success">Activées</span>
-                        {% else %}
-                            <span class="badge bg-danger">Désactivées</span>
-                        {% endif %}
-                    </p>
+                {% if custom_user %}
+                    <p><strong>Région:</strong> {{ custom_user.region }}</p>
+                    <p><strong>Ville:</strong> {{ custom_user.city }}</p>
                 {% else %}
                     <p class="text-muted">Profil incomplet. Veuillez mettre à jour vos informations.</p>
                 {% endif %}
