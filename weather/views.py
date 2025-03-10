@@ -1,8 +1,8 @@
 from django.shortcuts import render
 from django.contrib.auth.decorators import login_required
 from django.http import JsonResponse, HttpResponse
-from .models import Alert, CustomUser
-from .services.weather_api import OpenWeatherMapService
+from .models import Alert, CustomUser, TypeAlert
+from .services.weather_api import OpenWeatherMapService, MAIN_FRENCH_CITIES
 
 def home(request):
     # Initialiser le service météo
@@ -141,3 +141,111 @@ def api_forecast(request, city):
             return JsonResponse({'forecast': forecast_data})
         else:
             return JsonResponse({'error': 'Prévisions non disponibles'}, status=404)
+
+def alerts(request):
+    """
+    Vue pour afficher les alertes météo en France des 10 derniers jours
+    """
+    from datetime import datetime, timedelta
+    
+    # Initialiser le service météo
+    weather_service = OpenWeatherMapService()
+    
+    # Récupérer les alertes de la base de données des 10 derniers jours
+    ten_days_ago = datetime.now().date() - timedelta(days=10)
+    alerts_from_db = Alert.objects.filter(active=1, date_alert__gte=ten_days_ago).order_by('-date_alert')
+    
+    # Si des alertes existent dans la base de données, les utiliser
+    if alerts_from_db.exists():
+        alerts_list = alerts_from_db
+    else:
+        # Sinon, récupérer les alertes depuis l'API pour les principales villes françaises
+        alerts_list = []
+        
+        for city in MAIN_FRENCH_CITIES:
+            city_alerts = weather_service.get_weather_alerts(city['lat'], city['lon'])
+            
+            if city_alerts:
+                for alert in city_alerts:
+                    # Créer un type d'alerte s'il n'existe pas déjà
+                    alert_type, created = TypeAlert.objects.get_or_create(
+                        label=alert.get('event', 'Alerte météo')
+                    )
+                    
+                    # Convertir le timestamp en date
+                    alert_date = datetime.fromtimestamp(alert.get('start', datetime.now().timestamp())).date()
+                    
+                    # Vérifier si l'alerte est dans les 10 derniers jours
+                    if alert_date >= ten_days_ago:
+                        # Créer l'alerte dans la base de données
+                        new_alert = Alert.objects.create(
+                            fk_type=alert_type,
+                            region=city['name'],
+                            description=alert.get('description', '')[:255],
+                            active=1,
+                            date_alert=alert_date
+                        )
+                        
+                        alerts_list.append(new_alert)
+        
+        # Si aucune alerte n'a été trouvée via l'API, utiliser les données de prévision
+        if not alerts_list:
+            for city in MAIN_FRENCH_CITIES:
+                forecast = weather_service.get_forecast(city['name'])
+                
+                if forecast:
+                    # Analyser les prévisions pour détecter des conditions météo extrêmes
+                    for day in forecast:
+                        # Exemple: Fortes pluies (plus de 5mm)
+                        if day.get('rain', 0) > 5:
+                            alert_type, _ = TypeAlert.objects.get_or_create(label="Fortes pluies")
+                            new_alert = Alert.objects.create(
+                                fk_type=alert_type,
+                                region=city['name'],
+                                description=f"Fortes précipitations prévues avec {day.get('rain')}mm de pluie.",
+                                active=1,
+                                date_alert=day.get('datetime').date()
+                            )
+                            alerts_list.append(new_alert)
+                        
+                        # Exemple: Vents forts (plus de 10 m/s)
+                        if day.get('wind_speed', 0) > 10:
+                            alert_type, _ = TypeAlert.objects.get_or_create(label="Vents forts")
+                            new_alert = Alert.objects.create(
+                                fk_type=alert_type,
+                                region=city['name'],
+                                description=f"Vents forts prévus avec des vitesses atteignant {day.get('wind_speed')}m/s.",
+                                active=1,
+                                date_alert=day.get('datetime').date()
+                            )
+                            alerts_list.append(new_alert)
+                        
+                        # Exemple: Températures élevées (plus de 30°C)
+                        if day.get('temperature', 0) > 30:
+                            alert_type, _ = TypeAlert.objects.get_or_create(label="Canicule")
+                            new_alert = Alert.objects.create(
+                                fk_type=alert_type,
+                                region=city['name'],
+                                description=f"Températures élevées prévues avec {day.get('temperature')}°C.",
+                                active=1,
+                                date_alert=day.get('datetime').date()
+                            )
+                            alerts_list.append(new_alert)
+                        
+                        # Exemple: Températures basses (moins de 0°C)
+                        if day.get('temperature', 20) < 0:
+                            alert_type, _ = TypeAlert.objects.get_or_create(label="Gel")
+                            new_alert = Alert.objects.create(
+                                fk_type=alert_type,
+                                region=city['name'],
+                                description=f"Températures négatives prévues avec {day.get('temperature')}°C.",
+                                active=1,
+                                date_alert=day.get('datetime').date()
+                            )
+                            alerts_list.append(new_alert)
+    
+    context = {
+        'alerts': alerts_list
+    }
+    
+    return render(request, 'weather/alerts.html', context)

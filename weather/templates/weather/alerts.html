@@ -1,0 +1,19 @@
+<h1>Alertes météo en France</h1>
+
+<div>
+  {% if alerts %}
+    {% for alert in alerts %}
+      <div>
+        <h3>{{ alert.fk_type.label }}</h3>
+        <p>Région: {{ alert.region }}</p>
+        <p>Date: {{ alert.date_alert }}</p>
+        <p>{{ alert.description }}</p>
+      </div>
+      <hr>
+    {% endfor %}
+  {% else %}
+    <p>Aucune alerte météo en cours.</p>
+  {% endif %}
+</div>
+
+<!-- TODO: ajouter plus d'infos et de style --> 
