@@ -1,19 +1,19 @@
 from django.contrib import admin
-from .models import TypeAlert, Alert, UserProfile
+from .models import TypeAlert, Alert, CustomUser
 
 
 # add les outils pour les admins même si je pense qu'on les utilisera pas (lié à la db)
 @admin.register(TypeAlert)
 class TypeAlertAdmin(admin.ModelAdmin):
-    list_display = ('nom', 'description')
+    list_display = ('label',)
 
 @admin.register(Alert)
 class AlertAdmin(admin.ModelAdmin):
-    list_display = ('type_alert', 'region', 'date_debut', 'date_fin')
-    list_filter = ('type_alert', 'region')
+    list_display = ('fk_type', 'region', 'date_alert', 'active')
+    list_filter = ('fk_type', 'region', 'active')
 
-@admin.register(UserProfile)
-class UserProfileAdmin(admin.ModelAdmin):
-    list_display = ('user', 'region', 'ville')
-    search_fields = ('user__username', 'region', 'ville') 
+@admin.register(CustomUser)
+class CustomUserAdmin(admin.ModelAdmin):
+    list_display = ('email', 'region', 'city')
+    search_fields = ('email', 'region', 'city') 
 
