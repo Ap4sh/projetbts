@@ -1,11 +1,29 @@
-<h1>Météo</h1>
+{% extends 'base.html' %}
 
-<div id="map">
-  <!-- map ici -->
+{% block title %}Accueil - Météo{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-8">
+        <h2>Météo en France</h2>
+        <div id="map-container" class="mt-3">
+        </div>
+    </div>
+    <div class="col-md-4">
+        <h3>Alertes Météo</h3>
+        <div class="list-group">
+            {% if alerts %}
+                {% for alert in alerts %}
+                    <div class="list-group-item">
+                        <h5>{{ alert.type_alert.nom }}</h5>
+                        <p>{{ alert.region }}</p>
+                        <small>{{ alert.date_debut|date:"d/m/Y H:i" }}</small>
+                    </div>
+                {% endfor %}
+            {% else %}
+                <p class="text-muted">Aucune alerte en cours</p>
+            {% endif %}
+        </div>
+    </div>
 </div>
-
-<div>
-  <!-- villes ici -->
-</div>
-
-<!-- TODO: ajouter les données --> 
+{% endblock %} 
