@@ -1,5 +1,6 @@
 from django.shortcuts import render
 from django.contrib.auth.decorators import login_required
+from django.http import JsonResponse, HttpResponse
 from .models import Alert, CustomUser
 from .services.weather_api import OpenWeatherMapService
 
@@ -93,3 +94,50 @@ def weather_detail(request, city):
     }
     
     return render(request, 'weather/weather_detail.html', context)
+
+# HTMX Views
+def htmx_example(request):
+    """
+    Vue d'exemple pour HTMX
+    """
+    return render(request, 'weather/htmx_example.html')
+
+def api_weather(request, city):
+    """
+    API endpoint pour récupérer les données météo actuelles d'une ville
+    """
+    weather_service = OpenWeatherMapService()
+    weather_data = weather_service.get_current_weather(city)
+    
+    if request.headers.get('HX-Request'):
+        # Si c'est une requête HTMX, retourner un fragment HTML
+        if weather_data:
+            return render(request, 'weather/partials/weather_card.html', {'weather': weather_data})
+        else:
+            return HttpResponse('<div class="alert alert-error">Ville non trouvée</div>')
+    else:
+        # Sinon, retourner du JSON
+        if weather_data:
+            return JsonResponse(weather_data)
+        else:
+            return JsonResponse({'error': 'Ville non trouvée'}, status=404)
+
+def api_forecast(request, city):
+    """
+    API endpoint pour récupérer les prévisions météo d'une ville
+    """
+    weather_service = OpenWeatherMapService()
+    forecast_data = weather_service.get_forecast(city, days=5)
+    
+    if request.headers.get('HX-Request'):
+        # Si c'est une requête HTMX, retourner un fragment HTML
+        if forecast_data:
+            return render(request, 'weather/partials/forecast_table.html', {'forecast': forecast_data})
+        else:
+            return HttpResponse('<div class="alert alert-error">Prévisions non disponibles</div>')
+    else:
+        # Sinon, retourner du JSON
+        if forecast_data:
+            return JsonResponse({'forecast': forecast_data})
+        else:
+            return JsonResponse({'error': 'Prévisions non disponibles'}, status=404)

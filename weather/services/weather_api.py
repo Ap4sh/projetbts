@@ -1,8 +1,8 @@
 import os
 import requests
-from datetime import datetime
+from datetime import datetime, timedelta
 from django.conf import settings
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, List
 import logging
 
 logger = logging.getLogger(__name__)
@@ -116,8 +116,11 @@ class OpenWeatherMapService:
     
     def get_weather_alerts(self, lat, lon, units="metric", lang="fr"):
         """
-        Récupère les alertes météo pour des coordonnées géographiques
-        Utilise l'API OneCall qui inclut les alertes
+        Simule les alertes météo en utilisant les API gratuites
+        
+        Note: L'API OneCall 3.0 qui fournit les alertes nécessite un abonnement payant.
+        Cette méthode utilise les données de prévision pour générer des alertes simulées
+        basées sur les conditions météo extrêmes.
         
         Args:
             lat (float): Latitude
@@ -126,16 +129,17 @@ class OpenWeatherMapService:
             lang (str): Langue des données (fr, en, etc.)
             
         Returns:
-            list: Liste des alertes météo ou liste vide s'il n'y a pas d'alertes
+            list: Liste des alertes météo simulées ou liste vide s'il n'y a pas d'alertes
         """
-        endpoint = f"https://api.openweathermap.org/data/3.0/onecall"
+        # Utiliser l'API de prévision gratuite au lieu de OneCall
+        endpoint = f"{self.BASE_URL}/forecast"
         params = {
             'lat': lat,
             'lon': lon,
             'appid': self.api_key,
             'units': units,
             'lang': lang,
-            'exclude': 'minutely,hourly'  # Exclure les données non nécessaires
+            'cnt': 40  # Maximum de prévisions (5 jours)
         }
         
         try:
@@ -144,13 +148,127 @@ class OpenWeatherMapService:
             
             data = response.json()
             
-            # Vérifier si des alertes sont présentes
-            if 'alerts' in data:
-                return self._format_alerts(data['alerts'])
-            return []
+            # Générer des alertes basées sur les conditions météo extrêmes
+            return self._generate_alerts_from_forecast(data)
         except requests.exceptions.RequestException as e:
-            logger.error(f"Erreur lors de la récupération des alertes météo pour lat={lat}, lon={lon}: {str(e)}")
+            logger.error(f"Erreur lors de la récupération des données pour les alertes météo pour lat={lat}, lon={lon}: {str(e)}")
             return []
+    
+    def _generate_alerts_from_forecast(self, forecast_data):
+        """
+        Génère des alertes basées sur les données de prévision
+        
+        Args:
+            forecast_data (dict): Données de prévision brutes
+            
+        Returns:
+            list: Liste des alertes météo simulées
+        """
+        if not forecast_data or 'list' not in forecast_data:
+            return []
+        
+        alerts = []
+        city_name = forecast_data.get('city', {}).get('name', 'Inconnue')
+        
+        # Définir les seuils pour les conditions extrêmes
+        thresholds = {
+            'rain': 10.0,  # mm de pluie en 3h
+            'snow': 5.0,   # mm de neige en 3h
+            'wind': 15.0,  # m/s (environ 54 km/h)
+            'temp_high': 35.0,  # °C
+            'temp_low': 0.0,    # °C
+        }
+        
+        # Parcourir les prévisions pour détecter les conditions extrêmes
+        for item in forecast_data['list']:
+            dt = datetime.fromtimestamp(item.get('dt', 0))
+            temp = item.get('main', {}).get('temp', 20)
+            wind_speed = item.get('wind', {}).get('speed', 0)
+            rain = item.get('rain', {}).get('3h', 0)
+            snow = item.get('snow', {}).get('3h', 0)
+            weather_id = item.get('weather', [{}])[0].get('id', 800)
+            weather_desc = item.get('weather', [{}])[0].get('description', '')
+            
+            # Vérifier les conditions extrêmes
+            if rain > thresholds['rain']:
+                alerts.append(self._create_alert_object(
+                    'Fortes pluies', 
+                    f"Fortes précipitations prévues à {city_name} avec {rain}mm de pluie en 3h.",
+                    dt, dt + timedelta(hours=3)
+                ))
+            
+            if snow > thresholds['snow']:
+                alerts.append(self._create_alert_object(
+                    'Chutes de neige', 
+                    f"Chutes de neige importantes prévues à {city_name} avec {snow}mm en 3h.",
+                    dt, dt + timedelta(hours=3)
+                ))
+            
+            if wind_speed > thresholds['wind']:
+                alerts.append(self._create_alert_object(
+                    'Vents forts', 
+                    f"Vents forts prévus à {city_name} avec des vitesses atteignant {wind_speed}m/s.",
+                    dt, dt + timedelta(hours=3)
+                ))
+            
+            if temp > thresholds['temp_high']:
+                alerts.append(self._create_alert_object(
+                    'Canicule', 
+                    f"Températures élevées prévues à {city_name} avec {temp}°C.",
+                    dt, dt + timedelta(hours=3)
+                ))
+            
+            if temp < thresholds['temp_low']:
+                alerts.append(self._create_alert_object(
+                    'Gel', 
+                    f"Températures négatives prévues à {city_name} avec {temp}°C.",
+                    dt, dt + timedelta(hours=3)
+                ))
+            
+            # Alertes basées sur les codes météo
+            if weather_id < 300:  # Orages
+                alerts.append(self._create_alert_object(
+                    'Orages', 
+                    f"Orages prévus à {city_name}: {weather_desc}.",
+                    dt, dt + timedelta(hours=3)
+                ))
+            
+        # Supprimer les doublons et limiter le nombre d'alertes
+        unique_alerts = []
+        event_types = set()
+        
+        for alert in alerts:
+            if alert['event'] not in event_types:
+                event_types.add(alert['event'])
+                unique_alerts.append(alert)
+                
+                # Limiter à 3 types d'alertes différentes
+                if len(unique_alerts) >= 3:
+                    break
+        
+        return unique_alerts
+    
+    def _create_alert_object(self, event, description, start_time, end_time):
+        """
+        Crée un objet d'alerte formaté
+        
+        Args:
+            event (str): Type d'événement
+            description (str): Description de l'alerte
+            start_time (datetime): Heure de début
+            end_time (datetime): Heure de fin
+            
+        Returns:
+            dict: Objet d'alerte formaté
+        """
+        return {
+            'event': event,
+            'description': description,
+            'start': int(start_time.timestamp()),
+            'end': int(end_time.timestamp()),
+            'start_time': start_time,
+            'end_time': end_time
+        }
     
     def _format_current_weather(self, data):
         """
@@ -227,34 +345,6 @@ class OpenWeatherMapService:
             forecasts.append(forecast)
         
         return forecasts
-    
-    def _format_alerts(self, alerts_data):
-        """
-        Formate les données d'alertes météo
-        
-        Args:
-            alerts_data (list): Liste des alertes brutes de l'API
-            
-        Returns:
-            list: Liste des alertes météo formatées
-        """
-        if not alerts_data:
-            return []
-            
-        alerts = []
-        
-        for alert in alerts_data:
-            formatted_alert = {
-                'sender': alert.get('sender_name', ''),
-                'event': alert.get('event', ''),
-                'description': alert.get('description', ''),
-                'start': datetime.fromtimestamp(alert.get('start', 0)),
-                'end': datetime.fromtimestamp(alert.get('end', 0)),
-                'tags': alert.get('tags', [])
-            }
-            alerts.append(formatted_alert)
-        
-        return alerts
 
 
 # Fonction utilitaire pour obtenir une instance du service

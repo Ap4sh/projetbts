@@ -13,11 +13,8 @@ class Command(BaseCommand):
     def handle(self, *args, **options):
         self.stdout.write('Vérification des alertes météo...')
         
-        # Récupérer toutes les régions uniques des profils utilisateurs
         regions = CustomUser.objects.values_list('region', flat=True).distinct()
         
-        # Coordonnées approximatives pour les régions françaises
-        # Ces coordonnées sont approximatives et devraient être améliorées
         region_coordinates = {
             'Île-de-France': {'lat': 48.8566, 'lon': 2.3522},  # Paris
             'Auvergne-Rhône-Alpes': {'lat': 45.7578, 'lon': 4.8320},  # Lyon
@@ -34,29 +31,23 @@ class Command(BaseCommand):
             'Corse': {'lat': 42.0396, 'lon': 9.0129}  # Ajaccio
         }
         
-        # Initialiser le service météo
         weather_service = OpenWeatherMapService()
         
-        # Parcourir toutes les régions
         for region in regions:
             if region in region_coordinates:
                 lat = region_coordinates[region]['lat']
                 lon = region_coordinates[region]['lon']
                 
-                # Récupérer les alertes pour cette région
                 alerts = weather_service.get_weather_alerts(lat, lon)
                 
                 if alerts:
                     for alert_data in alerts:
-                        # Trouver ou créer le type d'alerte
                         alert_type, created = TypeAlert.objects.get_or_create(
                             label=alert_data.get('event', 'Alerte météo')
                         )
                         
-                        # Convertir les timestamps en datetime
                         alert_date = datetime.fromtimestamp(alert_data.get('start', timezone.now().timestamp())).date()
                         
-                        # Vérifier si une alerte similaire existe déjà
                         existing_alert = Alert.objects.filter(
                             fk_type=alert_type,
                             region=region,
@@ -64,11 +55,10 @@ class Command(BaseCommand):
                         ).first()
                         
                         if not existing_alert:
-                            # Créer une nouvelle alerte
                             Alert.objects.create(
                                 fk_type=alert_type,
                                 region=region,
-                                description=alert_data.get('description', '')[:255],  # Limiter à 255 caractères
+                                description=alert_data.get('description', '')[:255],  # 255 caractères
                                 active=1,
                                 date_alert=alert_date
                             )
