@@ -116,11 +116,11 @@ class OpenWeatherMapService:
     
     def get_weather_alerts(self, lat, lon, units="metric", lang="fr"):
         """
-        Simule les alertes météo en utilisant les API gratuites
+        Génère des alertes météo basées sur les données de prévision d'OpenWeather
         
         Note: L'API OneCall 3.0 qui fournit les alertes nécessite un abonnement payant.
-        Cette méthode utilise les données de prévision pour générer des alertes simulées
-        basées sur les conditions météo extrêmes.
+        Cette méthode utilise les données de prévision pour générer des alertes basées
+        sur les conditions météo réelles prévues par OpenWeather.
         
         Args:
             lat (float): Latitude
@@ -129,7 +129,7 @@ class OpenWeatherMapService:
             lang (str): Langue des données (fr, en, etc.)
             
         Returns:
-            list: Liste des alertes météo simulées ou liste vide s'il n'y a pas d'alertes
+            list: Liste des alertes météo générées ou liste vide s'il n'y a pas d'alertes
         """
         # Utiliser l'API de prévision gratuite au lieu de OneCall
         endpoint = f"{self.BASE_URL}/forecast"
@@ -148,7 +148,7 @@ class OpenWeatherMapService:
             
             data = response.json()
             
-            # Générer des alertes basées sur les conditions météo extrêmes
+            # Générer des alertes basées sur les conditions météo
             return self._generate_alerts_from_forecast(data)
         except requests.exceptions.RequestException as e:
             logger.error(f"Erreur lors de la récupération des données pour les alertes météo pour lat={lat}, lon={lon}: {str(e)}")
@@ -162,7 +162,7 @@ class OpenWeatherMapService:
             forecast_data (dict): Données de prévision brutes
             
         Returns:
-            list: Liste des alertes météo simulées
+            list: Liste des alertes météo générées
         """
         if not forecast_data or 'list' not in forecast_data:
             return []
@@ -170,13 +170,32 @@ class OpenWeatherMapService:
         alerts = []
         city_name = forecast_data.get('city', {}).get('name', 'Inconnue')
         
-        # Définir les seuils pour les conditions extrêmes
+        # Définir les seuils pour les conditions extrêmes (basés sur les standards météorologiques)
         thresholds = {
-            'rain': 10.0,  # mm de pluie en 3h
-            'snow': 5.0,   # mm de neige en 3h
-            'wind': 15.0,  # m/s (environ 54 km/h)
-            'temp_high': 35.0,  # °C
-            'temp_low': 0.0,    # °C
+            'rain_heavy': 7.5,     # mm de pluie en 3h (>7.5mm = fortes pluies)
+            'rain_very_heavy': 15.0, # mm de pluie en 3h (>15mm = très fortes pluies)
+            'snow_heavy': 5.0,     # mm de neige en 3h
+            'wind_strong': 10.8,   # m/s (environ 39 km/h) - Force 6 sur échelle Beaufort
+            'wind_gale': 17.2,     # m/s (environ 62 km/h) - Force 8 sur échelle Beaufort
+            'temp_very_hot': 32.0, # °C - Seuil d'alerte canicule
+            'temp_hot': 28.0,      # °C - Forte chaleur
+            'temp_cold': 0.0,      # °C - Gel
+            'temp_very_cold': -5.0 # °C - Grand froid
+        }
+        
+        # Codes météo importants pour les alertes
+        weather_alerts = {
+            # Orages
+            'thunderstorm': list(range(200, 300)),
+            # Pluie
+            'rain': list(range(300, 600)),
+            # Neige
+            'snow': list(range(600, 700)),
+            # Brouillard
+            'fog': [741],
+            # Tempête
+            'squall': [771],
+            'tornado': [781]
         }
         
         # Parcourir les prévisions pour détecter les conditions extrêmes
@@ -189,62 +208,135 @@ class OpenWeatherMapService:
             weather_id = item.get('weather', [{}])[0].get('id', 800)
             weather_desc = item.get('weather', [{}])[0].get('description', '')
             
-            # Vérifier les conditions extrêmes
-            if rain > thresholds['rain']:
+            alert_added = False
+            
+            # Vérifier les conditions extrêmes par ordre de priorité
+            
+            # 1. Phénomènes dangereux (tornades, orages violents)
+            if weather_id == 781:  # Tornade
+                alerts.append(self._create_alert_object(
+                    'Tornade', 
+                    f"Risque de tornade prévu à {city_name}. Phénomène dangereux et rare en France. Mettez-vous à l'abri.",
+                    dt, dt + timedelta(hours=3)
+                ))
+                alert_added = True
+            elif weather_id == 771:  # Tempête
+                alerts.append(self._create_alert_object(
+                    'Tempête violente', 
+                    f"Tempête violente prévue à {city_name}. Rafales destructrices possibles.",
+                    dt, dt + timedelta(hours=3)
+                ))
+                alert_added = True
+            elif weather_id in weather_alerts['thunderstorm'] and weather_id < 210:  # Orages violents
+                alerts.append(self._create_alert_object(
+                    'Orages violents', 
+                    f"Orages violents prévus à {city_name}. {weather_desc.capitalize()}.",
+                    dt, dt + timedelta(hours=3)
+                ))
+                alert_added = True
+                
+            # 2. Précipitations extrêmes
+            elif rain > thresholds['rain_very_heavy'] and not alert_added:
+                alerts.append(self._create_alert_object(
+                    'Pluies diluviennes', 
+                    f"Précipitations exceptionnelles prévues à {city_name} avec {rain:.1f}mm de pluie en 3h. Risque d'inondation.",
+                    dt, dt + timedelta(hours=3)
+                ))
+                alert_added = True
+            elif rain > thresholds['rain_heavy'] and not alert_added:
                 alerts.append(self._create_alert_object(
                     'Fortes pluies', 
-                    f"Fortes précipitations prévues à {city_name} avec {rain}mm de pluie en 3h.",
+                    f"Fortes précipitations prévues à {city_name} avec {rain:.1f}mm de pluie en 3h.",
                     dt, dt + timedelta(hours=3)
                 ))
-            
-            if snow > thresholds['snow']:
+                alert_added = True
+            elif snow > thresholds['snow_heavy'] and not alert_added:
                 alerts.append(self._create_alert_object(
-                    'Chutes de neige', 
-                    f"Chutes de neige importantes prévues à {city_name} avec {snow}mm en 3h.",
+                    'Chutes de neige importantes', 
+                    f"Chutes de neige importantes prévues à {city_name} avec {snow:.1f}mm en 3h. Conditions de circulation difficiles.",
                     dt, dt + timedelta(hours=3)
                 ))
-            
-            if wind_speed > thresholds['wind']:
+                alert_added = True
+                
+            # 3. Vents forts
+            elif wind_speed > thresholds['wind_gale'] and not alert_added:
+                alerts.append(self._create_alert_object(
+                    'Vents violents', 
+                    f"Vents violents prévus à {city_name} avec des vitesses atteignant {wind_speed:.1f}m/s ({wind_speed*3.6:.1f}km/h). Risque de dégâts.",
+                    dt, dt + timedelta(hours=3)
+                ))
+                alert_added = True
+            elif wind_speed > thresholds['wind_strong'] and not alert_added:
                 alerts.append(self._create_alert_object(
                     'Vents forts', 
-                    f"Vents forts prévus à {city_name} avec des vitesses atteignant {wind_speed}m/s.",
+                    f"Vents forts prévus à {city_name} avec des vitesses atteignant {wind_speed:.1f}m/s ({wind_speed*3.6:.1f}km/h).",
                     dt, dt + timedelta(hours=3)
                 ))
-            
-            if temp > thresholds['temp_high']:
+                alert_added = True
+                
+            # 4. Températures extrêmes
+            elif temp > thresholds['temp_very_hot'] and not alert_added:
                 alerts.append(self._create_alert_object(
                     'Canicule', 
-                    f"Températures élevées prévues à {city_name} avec {temp}°C.",
+                    f"Canicule prévue à {city_name} avec {temp:.1f}°C. Protégez-vous de la chaleur.",
                     dt, dt + timedelta(hours=3)
                 ))
-            
-            if temp < thresholds['temp_low']:
+                alert_added = True
+            elif temp > thresholds['temp_hot'] and not alert_added:
+                alerts.append(self._create_alert_object(
+                    'Forte chaleur', 
+                    f"Températures élevées prévues à {city_name} avec {temp:.1f}°C.",
+                    dt, dt + timedelta(hours=3)
+                ))
+                alert_added = True
+            elif temp < thresholds['temp_very_cold'] and not alert_added:
+                alerts.append(self._create_alert_object(
+                    'Grand froid', 
+                    f"Températures très basses prévues à {city_name} avec {temp:.1f}°C. Risque de gel important.",
+                    dt, dt + timedelta(hours=3)
+                ))
+                alert_added = True
+            elif temp < thresholds['temp_cold'] and not alert_added:
                 alerts.append(self._create_alert_object(
                     'Gel', 
-                    f"Températures négatives prévues à {city_name} avec {temp}°C.",
+                    f"Températures négatives prévues à {city_name} avec {temp:.1f}°C. Risque de verglas.",
                     dt, dt + timedelta(hours=3)
                 ))
-            
-            # Alertes basées sur les codes météo
-            if weather_id < 300:  # Orages
+                alert_added = True
+                
+            # 5. Autres phénomènes notables
+            elif weather_id in weather_alerts['fog'] and not alert_added:
                 alerts.append(self._create_alert_object(
-                    'Orages', 
-                    f"Orages prévus à {city_name}: {weather_desc}.",
+                    'Brouillard', 
+                    f"Brouillard dense prévu à {city_name}. Visibilité réduite, prudence sur les routes.",
                     dt, dt + timedelta(hours=3)
                 ))
-            
-        # Supprimer les doublons et limiter le nombre d'alertes
+                alert_added = True
+        
+        # Supprimer les doublons et regrouper les alertes similaires
         unique_alerts = []
-        event_types = set()
+        event_types = {}
         
         for alert in alerts:
-            if alert['event'] not in event_types:
-                event_types.add(alert['event'])
-                unique_alerts.append(alert)
+            event = alert['event']
+            if event in event_types:
+                # Si une alerte du même type existe déjà, ne garder que la plus sévère
+                existing_alert = event_types[event]
+                existing_desc = existing_alert['description']
+                new_desc = alert['description']
                 
-                # Limiter à 3 types d'alertes différentes
-                if len(unique_alerts) >= 3:
-                    break
+                # Comparer les descriptions pour déterminer la plus sévère
+                if "exceptionnelles" in new_desc or "diluviennes" in new_desc or "violents" in new_desc:
+                    event_types[event] = alert
+            else:
+                event_types[event] = alert
+        
+        # Convertir le dictionnaire en liste
+        unique_alerts = list(event_types.values())
+        
+        # Limiter à 5 types d'alertes différentes
+        if len(unique_alerts) > 5:
+            unique_alerts = unique_alerts[:5]
         
         return unique_alerts
     
