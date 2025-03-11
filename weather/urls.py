@@ -9,7 +9,6 @@ urlpatterns = [
     path('login/', views.login_view, name='login'),
     path('register/', views.register, name='register'),
     path('weather/<str:city>/', views.weather_detail, name='weather_detail'),
-    path('htmx-example/', views.htmx_example, name='htmx_example'),
     path('alerts/', views.alerts, name='alerts'),
     path('api/alerts/', views.api_alerts, name='api_alerts'),
     path('api/weather/<str:city>/', views.api_weather, name='api_weather'),

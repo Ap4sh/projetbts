@@ -1,35 +1,33 @@
 {% if alerts %}
-    {% for alert in alerts %}
-        <div class="bg-white rounded-lg shadow-md overflow-hidden">
-            <div class="p-4 {% if alert.severity == 'red' %}bg-red-600{% elif alert.severity == 'orange' %}bg-orange-500{% else %}bg-yellow-500{% endif %} text-white">
-                <h3 class="font-bold text-lg">{{ alert.type_label }}</h3>
-                <div class="text-sm">Niveau: {{ alert.severity_display }}</div>
-            </div>
-            <div class="p-4">
-                <div class="mb-2">
-                    <div class="font-semibold text-gray-700">Région:</div>
-                    <div class="text-gray-600">{{ alert.region }}</div>
-                </div>
-                <div class="mb-2">
-                    <div class="font-semibold text-gray-700">Date:</div>
-                    <div class="text-gray-600">{{ alert.date_alert|date:"j F Y" }}</div>
-                </div>
-                <div>
-                    <div class="font-semibold text-gray-700">Description:</div>
-                    <div class="text-gray-600 text-sm">{{ alert.description }}</div>
-                </div>
-            </div>
+{% for alert in alerts %}
+<div class="card bg-base-100 shadow-md overflow-hidden">
+    <div class="p-4 {% if alert.severity == 'red' %}bg-error{% elif alert.severity == 'orange' %}bg-warning{% else %}bg-warning{% endif %} text-base-100">
+        <h3 class="font-bold text-lg">{{ alert.type_label }}</h3>
+        <div class="text-sm">Niveau: {{ alert.severity_display }}</div>
+    </div>
+    <div class="p-4">
+        <div class="mb-2">
+            <div class="font-semibold">Région:</div>
+            <div class="opacity-80">{{ alert.region }}</div>
         </div>
-    {% endfor %}
-{% else %}
-    <div class="col-span-full">
-        <div class="bg-blue-100 border-l-4 border-blue-500 text-blue-700 p-4 rounded">
-            <div class="flex items-center">
-                <svg class="w-6 h-6 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                </svg>
-                <p>Aucune alerte météo correspondant à vos critères.</p>
-            </div>
+        <div class="mb-2">
+            <div class="font-semibold">Date:</div>
+            <div class="opacity-80">{{ alert.date_alert|date:"j F Y" }}</div>
+        </div>
+        <div>
+            <div class="font-semibold">Description:</div>
+            <div class="opacity-80 text-sm">{{ alert.description }}</div>
         </div>
     </div>
-{% endif %} 
+</div>
+{% endfor %}
+{% else %}
+<div class="col-span-full">
+    <div class="alert info">
+        <svg class="stroke-current shrink-0 h-6 w-6" fill="none" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+        </svg>
+        <span>Aucune alerte météo correspondant à vos critères.</span>
+    </div>
+</div>
+{% endif %}

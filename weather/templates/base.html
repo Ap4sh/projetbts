@@ -52,7 +52,7 @@
         <div class="hidden lg:flex mr-4">
             <ul class="menu menu-horizontal px-1">
                 <li><a href="/" class="{% if request.path == '/' %}active{% endif %}">Accueil</a></li>
-                <li><a href="/about/" class="{% if request.path == '/about/' %}active{% endif %}">À propos</a></li>
+                <li><a href="/alerts/" class="{% if request.path == '/alerts/' %}active{% endif %}">Alertes</a></li>
                 {% if user.is_authenticated %}
                 <li><a href="/profile/" class="{% if request.path == '/profile/' %}active{% endif %}">Profil</a></li>
                 {% endif %}
@@ -85,7 +85,7 @@
             </div>
             <ul tabindex="0" class="menu menu-sm dropdown-content mt-3 z-[1] p-2 shadow bg-base-100 rounded-box w-52 right-0">
                 <li><a href="/" class="{% if request.path == '/' %}active{% endif %}">Accueil</a></li>
-                <li><a href="/about/" class="{% if request.path == '/about/' %}active{% endif %}">À propos</a></li>
+                <li><a href="/alerts/" class="{% if request.path == '/alerts/' %}active{% endif %}">Alertes</a></li>
                 {% if user.is_authenticated %}
                 <li><a href="/profile/" class="{% if request.path == '/profile/' %}active{% endif %}">Profil</a></li>
                 <li><a href="/logout/">Déconnexion</a></li>

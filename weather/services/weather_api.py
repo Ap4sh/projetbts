@@ -759,35 +759,30 @@ class MeteoFranceVigilanceService:
         
         Returns:
             list: Liste des alertes formatées avec:
-                - type_label: Type d'alerte
-                - region: Région/Département concerné
+                - type_label: Type d'alerte (ex: 'Vent violent', 'Orages', etc.)
+                - region: Département concerné
                 - description: Description de l'alerte
-                - severity: Niveau de sévérité (yellow, orange, red)
+                - severity: Niveau de sévérité (green, yellow, orange, red)
                 - date_alert: Date de l'alerte
+                - severity_display: Affichage du niveau (Vert, Jaune, Orange, Rouge)
         """
         try:
             # Récupérer les données de vigilance
             texts = self.get_vigilance_texts()
-            if not texts:
+            if not texts or 'product' not in texts:
                 logger.warning("Aucune donnée de vigilance textuelle récupérée")
                 return []
-                
-            # Récupérer également les données de carte pour les phénomènes
-            map_data = self.get_vigilance_map()
-            if not map_data:
-                logger.warning("Aucune donnée de carte de vigilance récupérée")
             
             alerts = []
             
-            # Mapping des codes de risque vers les couleurs de sévérité
+            # Mapping des niveaux de risque
             risk_mapping = {
-                '1': 'green',   # Vert
-                '2': 'yellow',  # Jaune
-                '3': 'orange',  # Orange
-                '4': 'red'      # Rouge
+                '1': 'green',
+                '2': 'yellow',
+                '3': 'orange',
+                '4': 'red'
             }
             
-            # Mapping des niveaux de risque vers les noms d'affichage
             risk_display = {
                 '1': 'Vert',
                 '2': 'Jaune',
@@ -795,127 +790,61 @@ class MeteoFranceVigilanceService:
                 '4': 'Rouge'
             }
             
-            # Traiter les données de carte pour extraire les phénomènes par département
-            dept_phenomena = {}
-            if map_data and 'product' in map_data:
-                for domain in map_data.get('product', {}).get('domain_vigilance_items', []):
-                    domain_id = domain.get('domain_id')
-                    if domain_id and domain_id.isdigit() and len(domain_id) <= 3:  # C'est un département
-                        phenomena = []
-                        for phenomenon in domain.get('phenomenon_items', []):
-                            phenomenon_id = phenomenon.get('phenomenon_id')
-                            phenomenon_max_color_id = phenomenon.get('phenomenon_max_color_id')
-                            if phenomenon_id and phenomenon_max_color_id:
-                                phenomena.append({
-                                    'id': phenomenon_id,
-                                    'color_id': phenomenon_max_color_id
-                                })
-                        if phenomena:
-                            dept_phenomena[domain_id] = phenomena
+            # Parcourir les blocs de texte pour chaque département
+            for bloc in texts['product'].get('text_bloc_items', []):
+                domain_id = bloc.get('domain_id')
+                domain_name = bloc.get('domain_name')
+                
+                # Ignorer les blocs qui ne sont pas des départements
+                if not domain_id or not domain_id.isdigit() and domain_id not in ['2A', '2B']:
+                    continue
+                
+                # Parcourir les items du bloc
+                for item in bloc.get('bloc_items', []):
+                    for text_item in item.get('text_items', []):
+                        for term_item in text_item.get('term_items', []):
+                            risk_code = term_item.get('risk_code')
+                            if not risk_code:
+                                continue
+                                
+                            # Récupérer les informations de l'alerte
+                            severity = risk_mapping.get(risk_code, 'yellow')
+                            severity_display = risk_display.get(risk_code, 'Jaune')
+                            
+                            # Construire la description à partir des subdivisions de texte
+                            description_parts = []
+                            for subdivision in term_item.get('subdivision_text', []):
+                                if subdivision.get('bold_text'):
+                                    description_parts.append(f"{subdivision['bold_text']}")
+                                if subdivision.get('text'):
+                                    description_parts.extend(subdivision['text'])
+                            
+                            description = ' '.join(description_parts).strip()
+                            if not description:
+                                continue
+                            
+                            # Créer l'alerte
+                            alert = {
+                                'type_label': text_item.get('hazard_name', 'Vigilance météo'),
+                                'region': f"{domain_name} ({domain_id})",
+                                'description': description,
+                                'severity': severity,
+                                'severity_display': severity_display,
+                                'date_alert': datetime.now()
+                            }
+                            
+                            # Ajouter l'alerte uniquement si elle n'existe pas déjà
+                            if not any(a['region'] == alert['region'] and 
+                                     a['type_label'] == alert['type_label'] and
+                                     a['severity'] == alert['severity'] for a in alerts):
+                                alerts.append(alert)
             
-            # Parcourir les blocs de texte pour extraire les alertes
-            for bloc in texts.get('product', {}).get('text_bloc_items', []):
-                # Ne traiter que les bulletins départementaux
-                if bloc.get('bloc_id') == 'BULLETIN_DEPARTEMENTAL':
-                    domain_id = bloc.get('domain_id')
-                    domain_name = bloc.get('domain_name', '')
-                    
-                    # Ignorer les blocs sans items
-                    if not bloc.get('bloc_items'):
-                        continue
-                    
-                    # Récupérer les phénomènes pour ce département
-                    dept_phenom = dept_phenomena.get(domain_id, [])
-                    
-                    # Parcourir les items du bloc
-                    for item in bloc['bloc_items']:
-                        if item.get('text_items'):
-                            for text_item in item['text_items']:
-                                # Extraire les informations d'alerte
-                                for term_item in text_item.get('term_items', []):
-                                    # Ne garder que les alertes de niveau jaune ou supérieur
-                                    risk_code = term_item.get('risk_code')
-                                    if not risk_code or risk_code == '1':  # Ignorer le niveau vert (1)
-                                        continue
-                                    
-                                    # Construire la description à partir des subdivisions de texte
-                                    description_parts = []
-                                    for subdivision in term_item.get('subdivision_text', []):
-                                        if subdivision.get('text'):
-                                            description_parts.extend(subdivision['text'])
-                                    
-                                    description = ' '.join(description_parts)
-                                    if not description:
-                                        continue
-                                    
-                                    # Créer une alerte pour chaque phénomène actif dans le département
-                                    if dept_phenom:
-                                        for phenomenon in dept_phenom:
-                                            phenom_id = phenomenon.get('id')
-                                            color_id = phenomenon.get('color_id')
-                                            
-                                            # Déterminer le type d'alerte en fonction du phénomène
-                                            type_label = self._get_phenomenon_label(phenom_id)
-                                            
-                                            alert = {
-                                                'type_label': type_label,
-                                                'region': domain_name,
-                                                'description': description,
-                                                'severity': risk_mapping.get(color_id, 'yellow'),
-                                                'date_alert': self._parse_date(term_item.get('start_time')),
-                                                'severity_display': risk_display.get(color_id, 'Jaune')
-                                            }
-                                            
-                                            alerts.append(alert)
-                                    else:
-                                        # Si pas de phénomène spécifique, créer une alerte générale
-                                        alert = {
-                                            'type_label': 'Vigilance météo',
-                                            'region': domain_name,
-                                            'description': description,
-                                            'severity': risk_mapping.get(risk_code, 'yellow'),
-                                            'date_alert': self._parse_date(term_item.get('start_time')),
-                                            'severity_display': risk_display.get(risk_code, 'Jaune')
-                                        }
-                                        
-                                        alerts.append(alert)
-            
-            # Dédupliquer les alertes similaires
-            unique_alerts = []
-            seen_keys = set()
-            
-            for alert in alerts:
-                # Créer une clé unique basée sur le type, la région et la sévérité
-                key = f"{alert['type_label']}:{alert['region']}:{alert['severity']}"
-                if key not in seen_keys:
-                    seen_keys.add(key)
-                    unique_alerts.append(alert)
-            
-            logger.info(f"Alertes de vigilance récupérées: {len(unique_alerts)} alertes uniques")
-            return unique_alerts
+            return alerts
             
         except Exception as e:
             logger.error(f"Erreur lors de la récupération des alertes de vigilance: {str(e)}")
             return []
     
-    def _get_phenomenon_label(self, phenomenon_id):
-        """
-        Retourne le libellé d'un phénomène météo à partir de son ID
-        """
-        phenomena = {
-            '1': 'Vent violent',
-            '2': 'Pluie-Inondation',
-            '3': 'Orages',
-            '4': 'Crues',
-            '5': 'Neige-Verglas',
-            '6': 'Canicule',
-            '7': 'Grand froid',
-            '8': 'Avalanches',
-            '9': 'Vagues-Submersion'
-        }
-        
-        return phenomena.get(phenomenon_id, 'Vigilance météo')
-
     def _parse_date(self, date_str):
         """
         Convertit une chaîne de date en objet datetime
