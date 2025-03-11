@@ -1,13 +1,30 @@
 <!-- prévisions à faire -->
-<table border="1">
-  <tr>
-    <td>Jour 1</td>
-    <td>20°C</td>
-  </tr>
-  <tr>
-    <td>Jour 2</td>
-    <td>22°C</td>
-  </tr>
-</table>
-
-<!-- TODO: remplacer par données réelles --> 
+<div class="forecast-table overflow-x-auto">
+    <div class="flex gap-4">
+        {% for day in forecast %}
+        <div class="forecast-day bg-base-200 p-4 rounded-box min-w-[150px] flex-1">
+            <div class="text-center font-semibold mb-2">{{ day.date|date:"l j F" }}</div>
+            <div class="flex flex-col items-center">
+                <img src="https://openweathermap.org/img/wn/{{ day.weather.icon }}@2x.png" 
+                     alt="{{ day.weather.description }}" 
+                     class="w-16 h-16" />
+                <div class="text-sm">{{ day.weather.description|capfirst }}</div>
+                <div class="flex gap-2 mt-2">
+                    <span class="text-lg font-bold">{{ day.temp.max|floatformat:0 }}°</span>
+                    <span class="text-lg opacity-70">{{ day.temp.min|floatformat:0 }}°</span>
+                </div>
+                <div class="grid grid-cols-2 gap-2 mt-3 text-xs w-full">
+                    <div>
+                        <div class="opacity-70">Humidité</div>
+                        <div>{{ day.humidity }}%</div>
+                    </div>
+                    <div>
+                        <div class="opacity-70">Vent</div>
+                        <div>{{ day.wind_speed }} km/h</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div> 

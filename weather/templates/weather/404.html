@@ -1,0 +1,39 @@
+{% extends 'base.html' %}
+
+{% block title %}Ville non trouvée{% endblock title %}
+
+{% block content %}
+<div class="container mx-auto px-4 py-12 text-center">
+    <div class="bg-base-200 p-8 rounded-box max-w-lg mx-auto">
+        <h1 class="text-3xl font-bold mb-4">Ville non trouvée</h1>
+        
+        <div class="mb-6">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-24 w-24 mx-auto text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+        </div>
+        
+        <p class="mb-6">Désolé, nous n'avons pas pu trouver la ville que vous recherchez.</p>
+        
+        <div class="mb-8">
+            <p class="text-sm opacity-70 mb-2">Suggestions :</p>
+            <ul class="text-sm list-disc list-inside text-left max-w-xs mx-auto">
+                <li>Vérifiez l'orthographe du nom de la ville</li>
+                <li>Essayez avec un autre nom de ville</li>
+                <li>Utilisez la barre de recherche ci-dessous</li>
+            </ul>
+        </div>
+        
+        <div class="max-w-md mx-auto">
+            <form action="{% url 'weather:search_city' %}" method="get" class="flex gap-2">
+                <input type="text" name="query" placeholder="Rechercher une ville..." class="input input-bordered flex-1" />
+                <button type="submit" class="btn btn-primary">Rechercher</button>
+            </form>
+        </div>
+        
+        <div class="mt-8">
+            <a href="{% url 'weather:home' %}" class="btn btn-outline">Retour à l'accueil</a>
+        </div>
+    </div>
+</div>
+{% endblock content %} 

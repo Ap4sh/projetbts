@@ -7,12 +7,21 @@ import logging
 
 logger = logging.getLogger(__name__)
 
+# Liste des principales villes françaises
+MAIN_FRENCH_CITIES = [
+    "Paris", "Marseille", "Lyon", "Toulouse", "Nice", 
+    "Nantes", "Strasbourg", "Montpellier", "Bordeaux", "Lille",
+    "Rennes", "Reims", "Le Havre", "Saint-Étienne", "Toulon",
+    "Grenoble", "Dijon", "Angers", "Nîmes", "Villeurbanne"
+]
+
 class OpenWeatherMapService:
     """
     Service pour interagir avec l'API OpenWeatherMap
     """
     
     BASE_URL = "https://api.openweathermap.org/data/2.5"
+    GEO_URL = "https://api.openweathermap.org/geo/1.0"
     
     def __init__(self):
         # Récupérer la clé API depuis les variables d'environnement ou settings
@@ -100,8 +109,7 @@ class OpenWeatherMapService:
             'q': f"{city},{country_code}",
             'appid': self.api_key,
             'units': units,
-            'lang': lang,
-            'cnt': days * 8  # 8 prévisions par jour (toutes les 3 heures)
+            'lang': lang
         }
         
         try:
@@ -109,10 +117,63 @@ class OpenWeatherMapService:
             response.raise_for_status()
             
             data = response.json()
-            return self._format_forecast(data)
+            return self._format_forecast(data, days)
         except requests.exceptions.RequestException as e:
-            logger.error(f"Erreur lors de la récupération des prévisions météo pour {city}: {str(e)}")
+            logger.error(f"Erreur lors de la récupération des prévisions pour {city}: {str(e)}")
             return None
+    
+    def search_cities(self, query, limit=5, country_code="FR"):
+        """
+        Recherche des villes par nom
+        
+        Args:
+            query (str): Nom ou partie du nom de la ville à rechercher
+            limit (int): Nombre maximum de résultats à retourner
+            country_code (str): Code du pays (par défaut "FR" pour la France)
+            
+        Returns:
+            list: Liste des villes trouvées avec leurs données météo
+        """
+        if not query or len(query.strip()) < 2:
+            return []
+        
+        # Utiliser l'API Geocoding pour trouver les villes correspondantes
+        endpoint = f"{self.GEO_URL}/direct"
+        params = {
+            'q': query,
+            'limit': limit,
+            'appid': self.api_key
+        }
+        
+        try:
+            response = requests.get(endpoint, params=params)
+            response.raise_for_status()
+            
+            cities_data = response.json()
+            
+            # Filtrer les résultats pour ne garder que les villes françaises si spécifié
+            if country_code:
+                cities_data = [city for city in cities_data if city.get('country') == country_code]
+            
+            # Récupérer les données météo pour chaque ville trouvée
+            cities_with_weather = []
+            for city_data in cities_data:
+                city_name = city_data.get('name')
+                if not city_name:
+                    continue
+                    
+                weather_data = self.get_current_weather(city_name, country_code)
+                
+                if weather_data:
+                    cities_with_weather.append(weather_data)
+            
+            return cities_with_weather
+        except requests.exceptions.RequestException as e:
+            logger.error(f"Erreur lors de la recherche de villes pour '{query}': {str(e)}")
+            return []
+        except Exception as e:
+            logger.error(f"Erreur inattendue lors de la recherche de villes pour '{query}': {str(e)}")
+            return []
     
     def get_weather_alerts(self, lat, lon, units="metric", lang="fr"):
         """
@@ -403,12 +464,13 @@ class OpenWeatherMapService:
         
         return weather
     
-    def _format_forecast(self, data):
+    def _format_forecast(self, data, days):
         """
         Formate les données de prévision météo
         
         Args:
             data (dict): Données brutes de l'API
+            days (int): Nombre de jours de prévision
             
         Returns:
             list: Liste des prévisions météo formatées
@@ -436,6 +498,10 @@ class OpenWeatherMapService:
             }
             forecasts.append(forecast)
         
+        # Limiter à 5 jours de prévision
+        if len(forecasts) > days * 8:
+            forecasts = forecasts[:days * 8]
+        
         return forecasts
 
 
@@ -461,4 +527,89 @@ MAIN_FRENCH_CITIES = [
     {"name": "Montpellier", "lat": 43.6108, "lon": 3.8767},
     {"name": "Bordeaux", "lat": 44.8378, "lon": -0.5792},
     {"name": "Lille", "lat": 50.6292, "lon": 3.0573},
-] 
+]
+
+class MeteoFranceVigilanceService:
+    """Service pour récupérer les données de vigilance météo de Météo France"""
+    
+    BASE_URL = "https://public-api.meteofrance.fr/public/DPVigilance/v1"
+    
+    def __init__(self, api_key):
+        self.api_key = api_key
+        self.headers = {
+            'accept': '*/*',
+            'apikey': api_key
+        }
+    
+    def get_vigilance_texts(self):
+        """Récupère les bulletins de vigilance textuel"""
+        try:
+            response = requests.get(
+                f"{self.BASE_URL}/textesvigilance/encours",
+                headers=self.headers
+            )
+            response.raise_for_status()
+            return response.json()
+        except requests.exceptions.RequestException as e:
+            logger.error(f"Erreur lors de la récupération des textes de vigilance: {str(e)}")
+            return None
+            
+    def get_vigilance_map(self):
+        """Récupère la carte de vigilance avec les prévisions de risque"""
+        try:
+            response = requests.get(
+                f"{self.BASE_URL}/cartevigilance/encours",
+                headers=self.headers
+            )
+            response.raise_for_status()
+            return response.json()
+        except requests.exceptions.RequestException as e:
+            logger.error(f"Erreur lors de la récupération de la carte de vigilance: {str(e)}")
+            return None
+            
+    def get_vigilance_alerts(self):
+        """
+        Récupère et formate les alertes de vigilance actuelles
+        
+        Returns:
+            list: Liste des alertes formatées avec:
+                - type_label: Type d'alerte
+                - region: Région/Département concerné
+                - description: Description de l'alerte
+                - severity: Niveau de sévérité (yellow, orange, red)
+                - date_alert: Date de l'alerte
+        """
+        texts = self.get_vigilance_texts()
+        if not texts:
+            return []
+            
+        alerts = []
+        
+        # Parcourir les blocs de texte pour extraire les alertes
+        for bloc in texts.get('product', {}).get('text_bloc_items', []):
+            if bloc.get('bloc_items'):
+                for item in bloc['bloc_items']:
+                    if item.get('text_items'):
+                        for text_item in item['text_items']:
+                            for term_item in text_item.get('term_items', []):
+                                # Extraire les informations d'alerte
+                                alert = {
+                                    'type_label': text_item.get('hazard_name', 'Alerte météo'),
+                                    'region': bloc.get('domain_name', 'France'),
+                                    'description': '',
+                                    'severity': term_item.get('risk_color', '#f9ff00'),
+                                    'date_alert': term_item.get('start_time'),
+                                    'severity_display': term_item.get('risk_name', 'Jaune')
+                                }
+                                
+                                # Construire la description à partir des subdivisions de texte
+                                description_parts = []
+                                for subdivision in term_item.get('subdivision_text', []):
+                                    if subdivision.get('text'):
+                                        description_parts.extend(subdivision['text'])
+                                alert['description'] = ' '.join(description_parts)
+                                
+                                if alert['description']:  # Ne garder que les alertes avec une description
+                                    alerts.append(alert)
+        
+        return alerts 

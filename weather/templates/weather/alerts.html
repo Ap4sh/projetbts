@@ -1,19 +1,74 @@
-<h1>Alertes météo en France</h1>
+{% extends 'base.html' %}
 
-<div>
-  {% if alerts %}
-    {% for alert in alerts %}
-      <div>
-        <h3>{{ alert.fk_type.label }}</h3>
-        <p>Région: {{ alert.region }}</p>
-        <p>Date: {{ alert.date_alert }}</p>
-        <p>{{ alert.description }}</p>
-      </div>
-      <hr>
-    {% endfor %}
-  {% else %}
-    <p>Aucune alerte météo en cours.</p>
-  {% endif %}
+{% block title %}Alertes Météo - France{% endblock title %}
+
+{% block content %}
+<div class="container mx-auto px-4 py-6">
+    <h1 class="text-3xl font-bold mb-6">Alertes Météo en France</h1>
+    
+    <!-- Filtres d'alertes -->
+    <div class="mb-6 bg-base-200 p-4 rounded-box">
+        <h2 class="text-xl font-bold mb-3">Filtrer les alertes</h2>
+        <div class="flex flex-wrap gap-2">
+            <a href="{% url 'weather:alerts' %}" class="btn btn-sm {% if not request.GET.type %}btn-primary{% else %}btn-outline{% endif %}">
+                Toutes
+            </a>
+            <a href="{% url 'weather:alerts' %}?type=rain" class="btn btn-sm {% if request.GET.type == 'rain' %}btn-primary{% else %}btn-outline{% endif %}">
+                Pluie
+            </a>
+            <a href="{% url 'weather:alerts' %}?type=wind" class="btn btn-sm {% if request.GET.type == 'wind' %}btn-primary{% else %}btn-outline{% endif %}">
+                Vent
+            </a>
+            <a href="{% url 'weather:alerts' %}?type=storm" class="btn btn-sm {% if request.GET.type == 'storm' %}btn-primary{% else %}btn-outline{% endif %}">
+                Orage
+            </a>
+            <a href="{% url 'weather:alerts' %}?type=snow" class="btn btn-sm {% if request.GET.type == 'snow' %}btn-primary{% else %}btn-outline{% endif %}">
+                Neige
+            </a>
+            <a href="{% url 'weather:alerts' %}?type=heat" class="btn btn-sm {% if request.GET.type == 'heat' %}btn-primary{% else %}btn-outline{% endif %}">
+                Canicule
+            </a>
+            <a href="{% url 'weather:alerts' %}?type=flood" class="btn btn-sm {% if request.GET.type == 'flood' %}btn-primary{% else %}btn-outline{% endif %}">
+                Inondation
+            </a>
+        </div>
+    </div>
+    
+    <!-- Liste des alertes -->
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        {% if alerts %}
+            {% for alert in alerts %}
+                <div class="alert-card bg-base-200 rounded-box overflow-hidden">
+                    <div class="p-4 {% if alert.severity == 'red' %}bg-error{% elif alert.severity == 'orange' %}bg-warning{% else %}bg-info{% endif %} text-white">
+                        <h3 class="font-bold text-lg">{{ alert.type_label }}</h3>
+                        <div class="text-sm">Niveau: {{ alert.severity_display }}</div>
+                    </div>
+                    <div class="p-4">
+                        <div class="mb-2">
+                            <div class="font-semibold">Région:</div>
+                            <div>{{ alert.region }}</div>
+                        </div>
+                        <div class="mb-2">
+                            <div class="font-semibold">Date:</div>
+                            <div>{{ alert.date_alert|date:"j F Y" }}</div>
+                        </div>
+                        <div>
+                            <div class="font-semibold">Description:</div>
+                            <div class="text-sm">{{ alert.description }}</div>
+                        </div>
+                    </div>
+                </div>
+            {% endfor %}
+        {% else %}
+            <div class="col-span-full">
+                <div class="alert alert-info">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" class="stroke-current shrink-0 w-6 h-6">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                    </svg>
+                    <span>Aucune alerte météo correspondant à vos critères.</span>
+                </div>
+            </div>
+        {% endif %}
+    </div>
 </div>
-
-<!-- TODO: ajouter plus d'infos et de style --> 
+{% endblock content %} 

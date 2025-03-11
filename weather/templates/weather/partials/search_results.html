@@ -1,0 +1,29 @@
+{% if cities %}
+    <ul class="menu p-2">
+        {% for city in cities %}
+        <li>
+            {% if city.name %}
+            <a href="{% url 'weather:weather_detail' city.name %}" class="flex items-center gap-2">
+                <div class="weather-icon">
+                    <img src="https://openweathermap.org/img/wn/{{ city.weather.icon }}.png" 
+                         alt="{{ city.weather.description }}" 
+                         class="w-6 h-6" />
+                </div>
+                <div class="flex-1">
+                    <div class="font-medium">{{ city.name }}</div>
+                    <div class="text-xs opacity-70">{{ city.weather.description }}</div>
+                </div>
+                <div class="temperature font-bold">
+                    {{ city.main.temp|floatformat:0 }}°C
+                </div>
+            </a>
+            {% endif %}
+        </li>
+        {% endfor %}
+    </ul>
+{% elif query %}
+    <div class="p-4 text-center">
+        <p>Aucune ville trouvée pour "{{ query }}"</p>
+        <p class="text-xs mt-2 opacity-70">Essayez avec un autre nom de ville ou vérifiez l'orthographe</p>
+    </div>
+{% endif %} 

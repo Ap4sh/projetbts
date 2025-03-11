@@ -14,4 +14,8 @@ urlpatterns = [
     path('api/alerts/', views.api_alerts, name='api_alerts'),
     path('api/weather/<str:city>/', views.api_weather, name='api_weather'),
     path('api/forecast/<str:city>/', views.api_forecast, name='api_forecast'),
+    
+    # Nouvelles routes pour la recherche et le filtrage
+    path('search/', views.search_city, name='search_city'),
+    path('filter-alerts/', views.filter_alerts, name='filter_alerts'),
 ] 
