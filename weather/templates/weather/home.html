@@ -1,29 +1,115 @@
 {% extends 'base.html' %}
 
-{% block title %}Accueil - Météo{% endblock %}
+{% block title %}Météo France - Accueil{% endblock title %}
 
 {% block content %}
-<div class="row">
-    <div class="col-md-8">
-        <h2>Météo en France</h2>
-        <div id="map-container" class="mt-3">
+<!-- zone de contenu principale avec hauteur augmentée -->
+<div class="container mx-auto px-4 py-6 h-[calc(100vh-140px)] flex flex-col">
+    <div class="flex flex-col md:flex-row gap-6 h-full">
+        <!-- carte de france (côté gauche) -->
+        <div class="w-full md:w-2/3 bg-base-200 rounded-box p-4 h-full flex flex-col">
+            <h2 class="text-2xl font-bold mb-4">Carte Météo - France</h2>
+            <div class="map-container flex-grow w-full">
+                <!-- ici vous intégrerez votre carte météo de la france -->
+                <div class="w-full h-full bg-base-300 rounded-box flex items-center justify-center">
+                    <p class="text-lg">Carte météorologique de la France</p>
+                    <!-- remplacer ce div par votre carte réelle -->
+                </div>
+            </div>
+
+            <!-- champ de recherche pour la carte -->
+            <div class="form-control mt-4 max-w-xs">
+                <input type="text" placeholder="Rechercher une ville" class="input input-bordered w-full"
+                       hx-get="/search" hx-trigger="keyup changed delay:500ms" hx-target="#search-results" />
+                <div id="search-results" class="mt-2 bg-base-100 rounded-box"></div>
+            </div>
         </div>
-    </div>
-    <div class="col-md-4">
-        <h3>Alertes Météo</h3>
-        <div class="list-group">
-            {% if alerts %}
-                {% for alert in alerts %}
-                    <div class="list-group-item">
-                        <h5>{{ alert.type_alert.nom }}</h5>
-                        <p>{{ alert.region }}</p>
-                        <small>{{ alert.date_debut|date:"d/m/Y H:i" }}</small>
+
+        <!-- feed d'alertes (côté droit) -->
+        <div class="w-full md:w-1/3 h-full">
+            <div class="bg-base-200 rounded-box p-4 h-full flex flex-col">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-2xl font-bold">Alertes Météo</h2>
+
+                    <!-- filtre d'alertes -->
+                    <div class="dropdown dropdown-end">
+                        <div tabindex="0" role="button" class="btn btn-sm">
+                            Filtrer
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 ml-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
+                            </svg>
+                        </div>
+                        <ul tabindex="0" class="dropdown-content z-[1] menu p-2 shadow bg-base-100 rounded-box w-52">
+                            <li><a hx-get="/alert/all" hx-target="#alert-feed">Toutes les alertes</a></li>
+                            <li><a hx-get="/alert/rain" hx-target="#alert-feed">Pluie</a></li>
+                            <li><a hx-get="/alert/wind" hx-target="#alert-feed">Vent</a></li>
+                            <li><a hx-get="/alert/storm" hx-target="#alert-feed">Orage</a></li>
+                            <li><a hx-get="/alert/snow" hx-target="#alert-feed">Neige</a></li>
+                        </ul>
                     </div>
-                {% endfor %}
-            {% else %}
-                <p class="text-muted">Aucune alerte en cours</p>
-            {% endif %}
+                </div>
+
+                <!-- feed d'alertes (ancien en haut, récent en bas) avec défilement -->
+                <div id="alert-feed" class="flex flex-col gap-2 overflow-y-auto flex-grow">
+                    <!-- exemple d'alerte 1 (plus ancienne) -->
+                    <div class="alert alert-warning">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="stroke-current shrink-0 h-6 w-6" fill="none" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
+                        <div>
+                            <h3 class="font-bold">Alerte Orange - Vents violents</h3>
+                            <div class="text-sm">Bretagne - 8 Mars 2025</div>
+                        </div>
+                    </div>
+
+                    <!-- exemple d'alerte 2 -->
+                    <div class="alert alert-warning">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="stroke-current shrink-0 h-6 w-6" fill="none" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
+                        <div>
+                            <h3 class="font-bold">Alerte Jaune - Pluie</h3>
+                            <div class="text-sm">Normandie - 9 Mars 2025</div>
+                        </div>
+                    </div>
+
+                    <!-- exemple d'alerte 3 -->
+                    <div class="alert alert-error">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="stroke-current shrink-0 h-6 w-6" fill="none" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                        <div>
+                            <h3 class="font-bold">Alerte Rouge - Inondations</h3>
+                            <div class="text-sm">Côte d'Azur - 9 Mars 2025</div>
+                        </div>
+                    </div>
+
+                    <!-- exemple d'alerte 4 (plus récente) -->
+                    <div class="alert alert-error">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="stroke-current shrink-0 h-6 w-6" fill="none" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                        <div>
+                            <h3 class="font-bold">Alerte Rouge - Neige</h3>
+                            <div class="text-sm">Alpes - 10 Mars 2025</div>
+                        </div>
+                    </div>
+
+                    <!-- ajouter plus d'alertes pour montrer le défilement -->
+                    <div class="alert alert-warning">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="stroke-current shrink-0 h-6 w-6" fill="none" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
+                        <div>
+                            <h3 class="font-bold">Alerte Jaune - Orage</h3>
+                            <div class="text-sm">Aquitaine - 10 Mars 2025</div>
+                        </div>
+                    </div>
+
+                    <div class="alert alert-warning">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="stroke-current shrink-0 h-6 w-6" fill="none" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
+                        <div>
+                            <h3 class="font-bold">Alerte Orange - Canicule</h3>
+                            <div class="text-sm">Provence - 10 Mars 2025</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 </div>
-{% endblock %} 
+{% endblock content %}
+
+{% block htmx_scripts %}
+<!-- You can add home-specific HTMX scripts here -->
+{% endblock htmx_scripts %}
