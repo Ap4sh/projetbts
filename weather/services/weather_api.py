@@ -135,7 +135,25 @@ class OpenWeatherMapService:
             list: Liste des villes trouvées avec leurs données météo
         """
         if not query or len(query.strip()) < 2:
+            logger.warning(f"Requête de recherche trop courte ou vide: '{query}'")
             return []
+        
+        # Vérifier d'abord si la requête correspond à une ville française connue
+        query_lower = query.lower().strip()
+        logger.info(f"Recherche de ville avec la requête: '{query_lower}'")
+        
+        # Vérifier si la requête correspond à une ville française connue
+        matching_cities = []
+        for city_name in MAIN_FRENCH_CITIES:
+            if isinstance(city_name, str) and (city_name.lower() == query_lower or city_name.lower().startswith(query_lower)):
+                # Si c'est une ville connue, récupérer directement les données météo
+                weather_data = self.get_current_weather(city_name, country_code)
+                if weather_data:
+                    logger.info(f"Ville trouvée dans MAIN_FRENCH_CITIES: {city_name}")
+                    matching_cities.append(weather_data)
+        
+        if matching_cities:
+            return matching_cities
         
         # Utiliser l'API Geocoding pour trouver les villes correspondantes
         endpoint = f"{self.GEO_URL}/direct"
@@ -146,14 +164,17 @@ class OpenWeatherMapService:
         }
         
         try:
+            logger.info(f"Recherche de villes avec l'API Geocoding: {query}")
             response = requests.get(endpoint, params=params)
             response.raise_for_status()
             
             cities_data = response.json()
+            logger.info(f"Résultats de l'API Geocoding: {len(cities_data)} villes trouvées")
             
             # Filtrer les résultats pour ne garder que les villes françaises si spécifié
             if country_code:
                 cities_data = [city for city in cities_data if city.get('country') == country_code]
+                logger.info(f"Après filtrage par pays ({country_code}): {len(cities_data)} villes")
             
             # Récupérer les données météo pour chaque ville trouvée
             cities_with_weather = []
@@ -161,18 +182,22 @@ class OpenWeatherMapService:
                 city_name = city_data.get('name')
                 if not city_name:
                     continue
-                    
-                weather_data = self.get_current_weather(city_name, country_code)
                 
-                if weather_data:
-                    cities_with_weather.append(weather_data)
+                # Récupérer les données météo pour cette ville
+                lat = city_data.get('lat')
+                lon = city_data.get('lon')
+                if lat is not None and lon is not None:
+                    weather_data = self.get_weather_by_coordinates(lat, lon)
+                    if weather_data:
+                        # S'assurer que le nom de la ville est bien défini
+                        weather_data['name'] = city_name
+                        cities_with_weather.append(weather_data)
             
+            logger.info(f"Nombre de villes avec données météo: {len(cities_with_weather)}")
             return cities_with_weather
-        except requests.exceptions.RequestException as e:
-            logger.error(f"Erreur lors de la recherche de villes pour '{query}': {str(e)}")
-            return []
+            
         except Exception as e:
-            logger.error(f"Erreur inattendue lors de la recherche de villes pour '{query}': {str(e)}")
+            logger.error(f"Erreur lors de la recherche de villes: {str(e)}")
             return []
     
     def get_weather_alerts(self, lat, lon, units="metric", lang="fr"):
@@ -431,38 +456,59 @@ class OpenWeatherMapService:
             data (dict): Données brutes de l'API
             
         Returns:
-            dict: Données météo formatées
+            dict: Données formatées
         """
         if not data:
             return None
             
-        weather = {
-            'city': data.get('name', ''),
-            'country': data.get('sys', {}).get('country', ''),
-            'temperature': data.get('main', {}).get('temp', 0),
-            'feels_like': data.get('main', {}).get('feels_like', 0),
-            'humidity': data.get('main', {}).get('humidity', 0),
-            'pressure': data.get('main', {}).get('pressure', 0),
-            'description': data.get('weather', [{}])[0].get('description', ''),
-            'icon': data.get('weather', [{}])[0].get('icon', ''),
-            'wind_speed': data.get('wind', {}).get('speed', 0),
-            'wind_direction': data.get('wind', {}).get('deg', 0),
-            'clouds': data.get('clouds', {}).get('all', 0),
-            'timestamp': data.get('dt', 0),
-            'sunrise': data.get('sys', {}).get('sunrise', 0),
-            'sunset': data.get('sys', {}).get('sunset', 0),
-            'coordinates': {
-                'lat': data.get('coord', {}).get('lat', 0),
-                'lon': data.get('coord', {}).get('lon', 0)
+        try:
+            # Extraire les données principales
+            main_data = data.get('main', {})
+            weather_data = data.get('weather', [{}])[0] if data.get('weather') else {}
+            wind_data = data.get('wind', {})
+            sys_data = data.get('sys', {})
+            
+            # S'assurer que l'icône est correctement formatée
+            icon = weather_data.get('icon', '01d')
+            
+            # Formater les données
+            formatted_data = {
+                'name': data.get('name', ''),
+                'coordinates': {
+                    'lat': data.get('coord', {}).get('lat'),
+                    'lon': data.get('coord', {}).get('lon')
+                },
+                'main': {
+                    'temp': main_data.get('temp'),
+                    'feels_like': main_data.get('feels_like'),
+                    'temp_min': main_data.get('temp_min'),
+                    'temp_max': main_data.get('temp_max'),
+                    'pressure': main_data.get('pressure'),
+                    'humidity': main_data.get('humidity')
+                },
+                'weather': {
+                    'id': weather_data.get('id'),
+                    'main': weather_data.get('main'),
+                    'description': weather_data.get('description', ''),
+                    'icon': icon
+                },
+                'wind': {
+                    'speed': wind_data.get('speed'),
+                    'deg': wind_data.get('deg')
+                },
+                'visibility': data.get('visibility'),
+                'sys': {
+                    'country': sys_data.get('country'),
+                    'sunrise': datetime.fromtimestamp(sys_data.get('sunrise', 0)) if sys_data.get('sunrise') else None,
+                    'sunset': datetime.fromtimestamp(sys_data.get('sunset', 0)) if sys_data.get('sunset') else None
+                },
+                'dt': datetime.fromtimestamp(data.get('dt', 0)) if data.get('dt') else None
             }
-        }
-        
-        # Convertir les timestamps en datetime
-        weather['datetime'] = datetime.fromtimestamp(weather['timestamp'])
-        weather['sunrise_time'] = datetime.fromtimestamp(weather['sunrise'])
-        weather['sunset_time'] = datetime.fromtimestamp(weather['sunset'])
-        
-        return weather
+            
+            return formatted_data
+        except Exception as e:
+            logger.error(f"Erreur lors du formatage des données météo actuelles: {str(e)}")
+            return None
     
     def _format_forecast(self, data, days):
         """
@@ -473,37 +519,177 @@ class OpenWeatherMapService:
             days (int): Nombre de jours de prévision
             
         Returns:
-            list: Liste des prévisions météo formatées
+            list: Liste des prévisions météo formatées par jour
         """
         if not data or 'list' not in data:
             return []
             
         forecasts = []
         
+        # Récupérer toutes les prévisions
         for item in data['list']:
-            forecast = {
-                'timestamp': item.get('dt', 0),
-                'datetime': datetime.fromtimestamp(item.get('dt', 0)),
-                'temperature': item.get('main', {}).get('temp', 0),
-                'feels_like': item.get('main', {}).get('feels_like', 0),
-                'humidity': item.get('main', {}).get('humidity', 0),
-                'pressure': item.get('main', {}).get('pressure', 0),
-                'description': item.get('weather', [{}])[0].get('description', ''),
-                'icon': item.get('weather', [{}])[0].get('icon', ''),
-                'wind_speed': item.get('wind', {}).get('speed', 0),
-                'wind_direction': item.get('wind', {}).get('deg', 0),
-                'clouds': item.get('clouds', {}).get('all', 0),
-                'rain': item.get('rain', {}).get('3h', 0),
-                'snow': item.get('snow', {}).get('3h', 0)
-            }
-            forecasts.append(forecast)
+            try:
+                timestamp = item.get('dt', 0)
+                if not timestamp:
+                    logger.warning("Prévision sans timestamp, ignorée")
+                    continue
+                
+                # S'assurer que le timestamp est valide
+                try:
+                    dt = datetime.fromtimestamp(timestamp)
+                except (ValueError, TypeError, OverflowError):
+                    logger.warning(f"Timestamp invalide: {timestamp}, ignoré")
+                    continue
+                    
+                forecast = {
+                    'timestamp': timestamp,
+                    'datetime': dt,
+                    'temperature': item.get('main', {}).get('temp', 0),
+                    'feels_like': item.get('main', {}).get('feels_like', 0),
+                    'humidity': item.get('main', {}).get('humidity', 0),
+                    'pressure': item.get('main', {}).get('pressure', 0),
+                    'description': item.get('weather', [{}])[0].get('description', ''),
+                    'icon': item.get('weather', [{}])[0].get('icon', ''),
+                    'weather_id': item.get('weather', [{}])[0].get('id', 0),
+                    'wind_speed': item.get('wind', {}).get('speed', 0),
+                    'wind_direction': item.get('wind', {}).get('deg', 0),
+                    'clouds': item.get('clouds', {}).get('all', 0),
+                    'rain': item.get('rain', {}).get('3h', 0),
+                    'snow': item.get('snow', {}).get('3h', 0)
+                }
+                forecasts.append(forecast)
+            except Exception as e:
+                logger.error(f"Erreur lors du formatage d'une prévision: {str(e)}")
+                continue
         
-        # Limiter à 5 jours de prévision
-        if len(forecasts) > days * 8:
-            forecasts = forecasts[:days * 8]
+        # Regrouper les prévisions par jour
+        daily_forecasts = {}
         
-        return forecasts
+        for forecast in forecasts:
+            date = forecast['datetime'].date()
+            if date not in daily_forecasts:
+                daily_forecasts[date] = {
+                    'date': date,
+                    'datetime': datetime.combine(date, datetime.min.time()),  # Ajouter datetime pour éviter les erreurs
+                    'temp': {'min': float('inf'), 'max': float('-inf')},
+                    'humidity': 0,
+                    'wind_speed': 0,
+                    'weather': {'description': '', 'icon': ''},
+                    'forecasts': []
+                }
+            
+            # Ajouter la prévision à la liste des prévisions du jour
+            daily_forecasts[date]['forecasts'].append(forecast)
+            
+            # Mettre à jour les températures min/max
+            daily_forecasts[date]['temp']['min'] = min(daily_forecasts[date]['temp']['min'], forecast['temperature'])
+            daily_forecasts[date]['temp']['max'] = max(daily_forecasts[date]['temp']['max'], forecast['temperature'])
+        
+        # Calculer les moyennes et déterminer l'icône et la description les plus représentatives
+        result = []
+        for date, day_data in sorted(daily_forecasts.items()):
+            forecasts_count = len(day_data['forecasts'])
+            if forecasts_count == 0:
+                continue
+                
+            # Calculer les moyennes
+            humidity_sum = sum(f['humidity'] for f in day_data['forecasts'])
+            wind_speed_sum = sum(f['wind_speed'] for f in day_data['forecasts'])
+            
+            day_data['humidity'] = round(humidity_sum / forecasts_count)
+            day_data['wind_speed'] = round(wind_speed_sum / forecasts_count, 1)
+            
+            # Déterminer l'icône et la description les plus représentatives (milieu de journée)
+            midday_forecasts = [f for f in day_data['forecasts'] 
+                               if 10 <= f['datetime'].hour <= 16]
+            
+            if midday_forecasts:
+                # Prendre la prévision la plus proche de midi
+                midday_forecasts.sort(key=lambda x: abs(x['datetime'].hour - 12))
+                representative = midday_forecasts[0]
+            else:
+                # Si pas de prévision de milieu de journée, prendre la première
+                representative = day_data['forecasts'][0]
+            
+            day_data['weather']['description'] = representative['description']
+            day_data['weather']['icon'] = representative['icon']
+            
+            # S'assurer que l'icône est définie
+            if not day_data['weather']['icon']:
+                # Attribuer une icône par défaut en fonction de la description ou de l'ID météo
+                weather_id = representative.get('weather_id', 0)
+                if 'pluie' in representative['description'].lower() or 'rain' in representative['description'].lower():
+                    day_data['weather']['icon'] = '10d'  # Pluie
+                elif 'nuage' in representative['description'].lower() or 'cloud' in representative['description'].lower():
+                    day_data['weather']['icon'] = '03d'  # Nuageux
+                elif 'soleil' in representative['description'].lower() or 'sun' in representative['description'].lower() or 'clear' in representative['description'].lower():
+                    day_data['weather']['icon'] = '01d'  # Ensoleillé
+                elif 'neige' in representative['description'].lower() or 'snow' in representative['description'].lower():
+                    day_data['weather']['icon'] = '13d'  # Neige
+                elif 'orage' in representative['description'].lower() or 'thunder' in representative['description'].lower():
+                    day_data['weather']['icon'] = '11d'  # Orage
+                else:
+                    # Attribuer une icône en fonction de l'ID météo
+                    if 200 <= weather_id < 300:  # Orage
+                        day_data['weather']['icon'] = '11d'
+                    elif 300 <= weather_id < 400:  # Bruine
+                        day_data['weather']['icon'] = '09d'
+                    elif 500 <= weather_id < 600:  # Pluie
+                        day_data['weather']['icon'] = '10d'
+                    elif 600 <= weather_id < 700:  # Neige
+                        day_data['weather']['icon'] = '13d'
+                    elif 700 <= weather_id < 800:  # Atmosphère (brouillard, etc.)
+                        day_data['weather']['icon'] = '50d'
+                    elif weather_id == 800:  # Ciel dégagé
+                        day_data['weather']['icon'] = '01d'
+                    elif 801 <= weather_id < 900:  # Nuages
+                        day_data['weather']['icon'] = '03d'
+                    else:
+                        day_data['weather']['icon'] = '01d'  # Icône par défaut
+            
+            # Supprimer la liste des prévisions pour alléger le résultat
+            del day_data['forecasts']
+            
+            result.append(day_data)
+        
+        # Limiter au nombre de jours demandés
+        return result[:days]
 
+    def _parse_date(self, date_str):
+        """
+        Convertit une chaîne de date en objet datetime
+        
+        Args:
+            date_str (str): Chaîne de date à convertir
+            
+        Returns:
+            datetime: Objet datetime ou date actuelle si la conversion échoue
+        """
+        if not date_str:
+            return datetime.now()
+            
+        try:
+            # Gérer le format ISO avec timezone Z (2025-03-09T15:00:00.000Z)
+            if 'Z' in date_str:
+                # Supprimer le Z et les millisecondes si présents
+                date_str = date_str.replace('Z', '')
+                if '.' in date_str:
+                    date_str = date_str.split('.')[0]
+                return datetime.fromisoformat(date_str)
+                
+            # Essayer différents formats de date
+            for fmt in ['%Y-%m-%dT%H:%M:%S', '%Y-%m-%d %H:%M:%S', '%Y-%m-%d']:
+                try:
+                    return datetime.strptime(date_str, fmt)
+                except ValueError:
+                    continue
+                    
+            # Si aucun format ne correspond, retourner la date actuelle
+            logger.warning(f"Format de date non reconnu: {date_str}")
+            return datetime.now()
+        except Exception as e:
+            logger.error(f"Erreur lors de la conversion de la date: {str(e)}")
+            return datetime.now()
 
 # Fonction utilitaire pour obtenir une instance du service
 def get_weather_service():
@@ -579,37 +765,189 @@ class MeteoFranceVigilanceService:
                 - severity: Niveau de sévérité (yellow, orange, red)
                 - date_alert: Date de l'alerte
         """
-        texts = self.get_vigilance_texts()
-        if not texts:
-            return []
+        try:
+            # Récupérer les données de vigilance
+            texts = self.get_vigilance_texts()
+            if not texts:
+                logger.warning("Aucune donnée de vigilance textuelle récupérée")
+                return []
+                
+            # Récupérer également les données de carte pour les phénomènes
+            map_data = self.get_vigilance_map()
+            if not map_data:
+                logger.warning("Aucune donnée de carte de vigilance récupérée")
             
-        alerts = []
-        
-        # Parcourir les blocs de texte pour extraire les alertes
-        for bloc in texts.get('product', {}).get('text_bloc_items', []):
-            if bloc.get('bloc_items'):
-                for item in bloc['bloc_items']:
-                    if item.get('text_items'):
-                        for text_item in item['text_items']:
-                            for term_item in text_item.get('term_items', []):
+            alerts = []
+            
+            # Mapping des codes de risque vers les couleurs de sévérité
+            risk_mapping = {
+                '1': 'green',   # Vert
+                '2': 'yellow',  # Jaune
+                '3': 'orange',  # Orange
+                '4': 'red'      # Rouge
+            }
+            
+            # Mapping des niveaux de risque vers les noms d'affichage
+            risk_display = {
+                '1': 'Vert',
+                '2': 'Jaune',
+                '3': 'Orange',
+                '4': 'Rouge'
+            }
+            
+            # Traiter les données de carte pour extraire les phénomènes par département
+            dept_phenomena = {}
+            if map_data and 'product' in map_data:
+                for domain in map_data.get('product', {}).get('domain_vigilance_items', []):
+                    domain_id = domain.get('domain_id')
+                    if domain_id and domain_id.isdigit() and len(domain_id) <= 3:  # C'est un département
+                        phenomena = []
+                        for phenomenon in domain.get('phenomenon_items', []):
+                            phenomenon_id = phenomenon.get('phenomenon_id')
+                            phenomenon_max_color_id = phenomenon.get('phenomenon_max_color_id')
+                            if phenomenon_id and phenomenon_max_color_id:
+                                phenomena.append({
+                                    'id': phenomenon_id,
+                                    'color_id': phenomenon_max_color_id
+                                })
+                        if phenomena:
+                            dept_phenomena[domain_id] = phenomena
+            
+            # Parcourir les blocs de texte pour extraire les alertes
+            for bloc in texts.get('product', {}).get('text_bloc_items', []):
+                # Ne traiter que les bulletins départementaux
+                if bloc.get('bloc_id') == 'BULLETIN_DEPARTEMENTAL':
+                    domain_id = bloc.get('domain_id')
+                    domain_name = bloc.get('domain_name', '')
+                    
+                    # Ignorer les blocs sans items
+                    if not bloc.get('bloc_items'):
+                        continue
+                    
+                    # Récupérer les phénomènes pour ce département
+                    dept_phenom = dept_phenomena.get(domain_id, [])
+                    
+                    # Parcourir les items du bloc
+                    for item in bloc['bloc_items']:
+                        if item.get('text_items'):
+                            for text_item in item['text_items']:
                                 # Extraire les informations d'alerte
-                                alert = {
-                                    'type_label': text_item.get('hazard_name', 'Alerte météo'),
-                                    'region': bloc.get('domain_name', 'France'),
-                                    'description': '',
-                                    'severity': term_item.get('risk_color', '#f9ff00'),
-                                    'date_alert': term_item.get('start_time'),
-                                    'severity_display': term_item.get('risk_name', 'Jaune')
-                                }
-                                
-                                # Construire la description à partir des subdivisions de texte
-                                description_parts = []
-                                for subdivision in term_item.get('subdivision_text', []):
-                                    if subdivision.get('text'):
-                                        description_parts.extend(subdivision['text'])
-                                alert['description'] = ' '.join(description_parts)
-                                
-                                if alert['description']:  # Ne garder que les alertes avec une description
-                                    alerts.append(alert)
+                                for term_item in text_item.get('term_items', []):
+                                    # Ne garder que les alertes de niveau jaune ou supérieur
+                                    risk_code = term_item.get('risk_code')
+                                    if not risk_code or risk_code == '1':  # Ignorer le niveau vert (1)
+                                        continue
+                                    
+                                    # Construire la description à partir des subdivisions de texte
+                                    description_parts = []
+                                    for subdivision in term_item.get('subdivision_text', []):
+                                        if subdivision.get('text'):
+                                            description_parts.extend(subdivision['text'])
+                                    
+                                    description = ' '.join(description_parts)
+                                    if not description:
+                                        continue
+                                    
+                                    # Créer une alerte pour chaque phénomène actif dans le département
+                                    if dept_phenom:
+                                        for phenomenon in dept_phenom:
+                                            phenom_id = phenomenon.get('id')
+                                            color_id = phenomenon.get('color_id')
+                                            
+                                            # Déterminer le type d'alerte en fonction du phénomène
+                                            type_label = self._get_phenomenon_label(phenom_id)
+                                            
+                                            alert = {
+                                                'type_label': type_label,
+                                                'region': domain_name,
+                                                'description': description,
+                                                'severity': risk_mapping.get(color_id, 'yellow'),
+                                                'date_alert': self._parse_date(term_item.get('start_time')),
+                                                'severity_display': risk_display.get(color_id, 'Jaune')
+                                            }
+                                            
+                                            alerts.append(alert)
+                                    else:
+                                        # Si pas de phénomène spécifique, créer une alerte générale
+                                        alert = {
+                                            'type_label': 'Vigilance météo',
+                                            'region': domain_name,
+                                            'description': description,
+                                            'severity': risk_mapping.get(risk_code, 'yellow'),
+                                            'date_alert': self._parse_date(term_item.get('start_time')),
+                                            'severity_display': risk_display.get(risk_code, 'Jaune')
+                                        }
+                                        
+                                        alerts.append(alert)
+            
+            # Dédupliquer les alertes similaires
+            unique_alerts = []
+            seen_keys = set()
+            
+            for alert in alerts:
+                # Créer une clé unique basée sur le type, la région et la sévérité
+                key = f"{alert['type_label']}:{alert['region']}:{alert['severity']}"
+                if key not in seen_keys:
+                    seen_keys.add(key)
+                    unique_alerts.append(alert)
+            
+            logger.info(f"Alertes de vigilance récupérées: {len(unique_alerts)} alertes uniques")
+            return unique_alerts
+            
+        except Exception as e:
+            logger.error(f"Erreur lors de la récupération des alertes de vigilance: {str(e)}")
+            return []
+    
+    def _get_phenomenon_label(self, phenomenon_id):
+        """
+        Retourne le libellé d'un phénomène météo à partir de son ID
+        """
+        phenomena = {
+            '1': 'Vent violent',
+            '2': 'Pluie-Inondation',
+            '3': 'Orages',
+            '4': 'Crues',
+            '5': 'Neige-Verglas',
+            '6': 'Canicule',
+            '7': 'Grand froid',
+            '8': 'Avalanches',
+            '9': 'Vagues-Submersion'
+        }
         
-        return alerts 
+        return phenomena.get(phenomenon_id, 'Vigilance météo')
+
+    def _parse_date(self, date_str):
+        """
+        Convertit une chaîne de date en objet datetime
+        
+        Args:
+            date_str (str): Chaîne de date à convertir
+            
+        Returns:
+            datetime: Objet datetime ou date actuelle si la conversion échoue
+        """
+        if not date_str:
+            return datetime.now()
+            
+        try:
+            # Gérer le format ISO avec timezone Z (2025-03-09T15:00:00.000Z)
+            if 'Z' in date_str:
+                # Supprimer le Z et les millisecondes si présents
+                date_str = date_str.replace('Z', '')
+                if '.' in date_str:
+                    date_str = date_str.split('.')[0]
+                return datetime.fromisoformat(date_str)
+                
+            # Essayer différents formats de date
+            for fmt in ['%Y-%m-%dT%H:%M:%S', '%Y-%m-%d %H:%M:%S', '%Y-%m-%d']:
+                try:
+                    return datetime.strptime(date_str, fmt)
+                except ValueError:
+                    continue
+                    
+            # Si aucun format ne correspond, retourner la date actuelle
+            logger.warning(f"Format de date non reconnu: {date_str}")
+            return datetime.now()
+        except Exception as e:
+            logger.error(f"Erreur lors de la conversion de la date: {str(e)}")
+            return datetime.now()

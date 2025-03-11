@@ -4,21 +4,68 @@
           hx-trigger="submit, input[name='query'] changed delay:500ms"
           class="flex flex-col gap-2">
         
-        <div class="input-group">
+        <div class="input-group flex items-center">
             <input type="text" 
                    name="query" 
                    placeholder="Rechercher une ville..." 
                    class="input input-bordered w-full" 
                    autocomplete="off" />
-            <button type="submit" class="btn btn-primary">
+            <button type="submit" class="btn btn-primary h-full">
                 <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                 </svg>
             </button>
         </div>
         
-        <div id="search-results" class="search-results mt-2 bg-base-100 rounded-box shadow-md max-h-60 overflow-y-auto hidden">
+        <div id="search-results" class="search-results mt-2 bg-base-100 rounded-box shadow-md max-h-60 overflow-y-auto">
             <!-- Les résultats de recherche seront chargés ici via HTMX -->
         </div>
     </form>
-</div> 
+</div>
+
+<script>
+    // Script pour gérer l'affichage des résultats de recherche
+    document.addEventListener('DOMContentLoaded', function() {
+        const searchForm = document.querySelector('.city-search-container form');
+        const searchResults = document.getElementById('search-results');
+        const searchInput = document.querySelector('input[name="query"]');
+        
+        if (searchForm && searchResults && searchInput) {
+            // Cacher les résultats au chargement
+            if (searchResults.innerHTML.trim() === '') {
+                searchResults.classList.add('hidden');
+            }
+            
+            // Afficher les résultats après une recherche
+            searchForm.addEventListener('htmx:afterRequest', function(event) {
+                if (searchResults.innerHTML.trim() !== '') {
+                    searchResults.classList.remove('hidden');
+                } else {
+                    searchResults.classList.add('hidden');
+                }
+            });
+            
+            // Cacher les résultats quand on clique ailleurs
+            document.addEventListener('click', function(e) {
+                if (!searchForm.contains(e.target)) {
+                    searchResults.classList.add('hidden');
+                }
+            });
+            
+            // Afficher les résultats quand on clique dans le champ de recherche
+            searchInput.addEventListener('focus', function() {
+                if (searchResults.innerHTML.trim() !== '') {
+                    searchResults.classList.remove('hidden');
+                }
+            });
+            
+            // Soumettre le formulaire quand on appuie sur Entrée
+            searchInput.addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    searchForm.dispatchEvent(new Event('submit'));
+                }
+            });
+        }
+    });
+</script> 

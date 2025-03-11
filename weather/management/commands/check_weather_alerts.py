@@ -60,8 +60,19 @@ class Command(BaseCommand):
             forecast = weather_service.get_forecast(city_name, days=5)
             if forecast:
                 for day_forecast in forecast:
+                    # Vérifier si la prévision a une date valide (soit datetime soit date)
+                    forecast_date = None
+                    
+                    if 'datetime' in day_forecast:
+                        forecast_date = day_forecast['datetime'].date() if isinstance(day_forecast['datetime'], datetime) else None
+                    elif 'date' in day_forecast:
+                        forecast_date = day_forecast['date'] if isinstance(day_forecast['date'], (datetime, date)) else None
+                    
+                    if forecast_date is None:
+                        self.stdout.write(self.style.WARNING(f"Prévision sans date pour {city_name}, ignorée"))
+                        continue
+                        
                     # Ne traiter que les prévisions futures (pas celles du passé)
-                    forecast_date = day_forecast.get('datetime').date()
                     if forecast_date >= timezone.now().date():
                         alerts = self._check_forecast_conditions(day_forecast, thresholds, weather_alerts, city_name, forecast_date)
                         alerts_count += len(alerts)

@@ -5,7 +5,12 @@ from django.http import JsonResponse, HttpResponse
 from .models import Alert, CustomUser, TypeAlert
 from .services.weather_api import OpenWeatherMapService, MAIN_FRENCH_CITIES, MeteoFranceVigilanceService
 from datetime import datetime, timedelta
+from django.utils import timezone
 from django.db.models import Q
+import logging
+from django.conf import settings
+
+logger = logging.getLogger(__name__)
 
 def home(request):
     # Initialiser le service météo
@@ -34,8 +39,9 @@ def home(request):
             weather_data.update(city)
             cities_weather.append(weather_data)
     
-    # Récupérer les alertes météo actives
-    alerts = get_formatted_alerts()
+    # Récupérer les alertes météo actives (limitées à 6 et seulement orange/rouge)
+    alerts = get_formatted_alerts(limit=6)
+    alerts = [alert for alert in alerts if alert.get('severity') in ['orange', 'red']]
     
     context = {
         'cities_weather': cities_weather,
@@ -127,41 +133,59 @@ def search_city(request):
     Vue pour rechercher une ville et afficher les résultats
     """
     query = request.GET.get('query', '').strip()
+    logger.info(f"Recherche de ville avec la requête: '{query}'")
     
     if not query or len(query) < 2:
+        logger.warning(f"Requête de recherche trop courte ou vide: '{query}'")
         return render(request, 'weather/partials/search_results.html', {'query': query})
     
     # Initialiser le service météo
     weather_service = OpenWeatherMapService()
     
-    # Rechercher les villes correspondant à la requête
-    cities = weather_service.search_cities(query)
-    
-    # Filtrer les résultats pour ne garder que ceux avec un nom valide
-    cities = [city for city in cities if city and 'name' in city and city['name']]
-    
-    # Limiter le nombre de résultats pour des raisons de performance
-    cities = cities[:5]
-    
-    # Ajouter un message si aucune ville n'est trouvée
-    no_results = len(cities) == 0
-    
-    context = {
-        'query': query,
-        'cities': cities,
-        'no_results': no_results
-    }
-    
-    return render(request, 'weather/partials/search_results.html', context)
+    try:
+        # Rechercher les villes correspondant à la requête
+        cities = weather_service.search_cities(query)
+        logger.info(f"Nombre de villes trouvées: {len(cities)}")
+        
+        # Filtrer les résultats pour ne garder que ceux avec un nom valide
+        cities = [city for city in cities if city and isinstance(city, dict) and 'name' in city and city['name']]
+        logger.info(f"Nombre de villes après filtrage: {len(cities)}")
+        
+        # Créer un ensemble pour suivre les noms de villes déjà inclus
+        city_names = set()
+        unique_cities = []
+        
+        for city in cities:
+            city_name = city.get('name')
+            if city_name and city_name not in city_names:
+                city_names.add(city_name)
+                unique_cities.append(city)
+        
+        cities = unique_cities
+        logger.info(f"Nombre de villes après dédoublonnage: {len(cities)}")
+        
+        # Limiter le nombre de résultats pour des raisons de performance
+        cities = cities[:5]
+        
+        context = {
+            'cities': cities,
+            'query': query
+        }
+        
+        return render(request, 'weather/partials/search_results.html', context)
+    except Exception as e:
+        logger.error(f"Erreur lors de la recherche de villes: {str(e)}")
+        return render(request, 'weather/partials/search_results.html', {'query': query, 'error': str(e)})
 
 def filter_alerts(request):
     """
-    Vue pour filtrer les alertes par type
+    Vue pour filtrer les alertes par type et région
     """
     alert_type = request.GET.get('type', None)
+    region = request.GET.get('region', None)
     
     # Récupérer les alertes filtrées
-    alerts = get_formatted_alerts(alert_type)
+    alerts = get_formatted_alerts(alert_type=alert_type, region=region)
     
     return render(request, 'weather/partials/alert_feed.html', {'alerts': alerts})
 
@@ -267,61 +291,60 @@ def api_alerts(request):
     })
 
 # Fonctions utilitaires
-def get_formatted_alerts(alert_type=None):
+def get_formatted_alerts(alert_type=None, region=None, limit=None):
     """
-    Récupère et formate les alertes météo depuis l'API Météo France Vigilance
-    et la base de données locale
+    Récupère les alertes formatées depuis la base de données et l'API Météo France
     
     Args:
-        alert_type (str, optional): Type d'alerte à filtrer. Defaults to None.
+        alert_type (str, optional): Type d'alerte à filtrer. Par défaut None (toutes les alertes).
+        region (str, optional): Région à filtrer. Par défaut None (toutes les régions).
+        limit (int, optional): Nombre maximum d'alertes à retourner. Par défaut None (pas de limite).
         
     Returns:
         list: Liste des alertes formatées
     """
-    from datetime import datetime, timedelta
-    from weather.services.weather_api import MeteoFranceVigilanceService
-    
-    # Définir la période : 1 semaine dans le passé et 2 semaines dans le futur
-    one_week_ago = datetime.now().date() - timedelta(days=7)
-    two_weeks_ahead = datetime.now().date() + timedelta(days=14)
-    
     # Récupérer les alertes de la base de données
     alerts_query = Alert.objects.filter(
-        active=1, 
-        date_alert__gte=one_week_ago,
-        date_alert__lte=two_weeks_ahead
-    )
-    
-    # Mapping des types d'alertes pour le filtrage
-    type_mapping = {
-        'rain': ['pluie', 'précipitation', 'averse'],
-        'wind': ['vent', 'rafale', 'tempête'],
-        'storm': ['orage', 'foudre', 'éclair'],
-        'snow': ['neige', 'verglas', 'gel'],
-        'heat': ['canicule', 'chaleur', 'température élevée'],
-        'flood': ['inondation', 'crue', 'montée des eaux'],
-    }
+        active=1,
+        date_alert__gte=timezone.now().date()
+    ).select_related('fk_type')
     
     # Filtrer par type si spécifié
-    if alert_type and alert_type in type_mapping:
-        # Créer une requête OR pour tous les termes associés au type
-        query = Q()
-        for term in type_mapping[alert_type]:
-            query |= Q(fk_type__label__icontains=term) | Q(description__icontains=term)
-        
-        alerts_query = alerts_query.filter(query)
-    elif alert_type:
-        # Si le type n'est pas dans le mapping mais est spécifié, rechercher directement
-        alerts_query = alerts_query.filter(
-            Q(fk_type__label__icontains=alert_type) | 
-            Q(description__icontains=alert_type)
-        )
+    if alert_type:
+        if alert_type == 'rain':
+            alerts_query = alerts_query.filter(
+                Q(fk_type__label__icontains='pluie') | 
+                Q(fk_type__label__icontains='précipitation')
+            )
+        elif alert_type == 'wind':
+            alerts_query = alerts_query.filter(
+                Q(fk_type__label__icontains='vent')
+            )
+        elif alert_type == 'storm':
+            alerts_query = alerts_query.filter(
+                Q(fk_type__label__icontains='orage')
+            )
+        elif alert_type == 'snow':
+            alerts_query = alerts_query.filter(
+                Q(fk_type__label__icontains='neige') |
+                Q(fk_type__label__icontains='verglas')
+            )
+        elif alert_type == 'heat':
+            alerts_query = alerts_query.filter(
+                Q(fk_type__label__icontains='chaleur') |
+                Q(fk_type__label__icontains='canicule')
+            )
+        elif alert_type == 'flood':
+            alerts_query = alerts_query.filter(
+                Q(fk_type__label__icontains='inondation')
+            )
     
-    # Trier par date (plus récentes en premier)
-    alerts_query = alerts_query.order_by('-date_alert')
+    # Filtrer par région si spécifiée
+    if region:
+        alerts_query = alerts_query.filter(region__icontains=region)
     
-    # Formater les alertes de la base de données
-    formatted_alerts = []
+    # Convertir les alertes de la base de données en format standard
+    db_alerts = []
     for alert in alerts_query:
         # Déterminer la sévérité de l'alerte
         severity = "yellow"  # Par défaut
@@ -339,89 +362,119 @@ def get_formatted_alerts(alert_type=None):
             if any(term in label_lower or term in desc_lower for term in terms):
                 severity = sev
                 break
-        
-        # Déterminer le type d'alerte pour l'affichage
-        alert_type_display = alert.fk_type.label
-        
-        # Formater l'alerte
-        formatted_alerts.append({
-            'id': alert.id,
-            'type_label': alert_type_display,
+                
+        db_alerts.append({
+            'type_label': alert.fk_type.label,
             'region': alert.region,
             'description': alert.description,
-            'date_alert': alert.date_alert,
             'severity': severity,
+            'date_alert': alert.date_alert,
             'severity_display': {
-                'red': 'Rouge',
+                'yellow': 'Jaune',
                 'orange': 'Orange',
-                'yellow': 'Jaune'
+                'red': 'Rouge'
             }.get(severity, 'Jaune')
         })
     
-    # Récupérer les alertes de l'API Météo France Vigilance
-    api_key = "eyJ4NXQiOiJZV0kxTTJZNE1qWTNOemsyTkRZeU5XTTRPV014TXpjek1UVmhNbU14T1RSa09ETXlOVEE0Tnc9PSIsImtpZCI6ImdhdGV3YXlfY2VydGlmaWNhdGVfYWxpYXMiLCJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9.eyJzdWIiOiJzYW15dnZzQGNhcmJvbi5zdXBlciIsImFwcGxpY2F0aW9uIjp7Im93bmVyIjoic2FteXZ2cyIsInRpZXJRdW90YVR5cGUiOm51bGwsInRpZXIiOiJVbmxpbWl0ZWQiLCJuYW1lIjoiRGVmYXVsdEFwcGxpY2F0aW9uIiwiaWQiOjI1Mzc2LCJ1dWlkIjoiMDUyMjEwOGItNzhmMi00NzY4LTk2YTEtZmMyZDJjMTE5NTU4In0sImlzcyI6Imh0dHBzOlwvXC9wb3J0YWlsLWFwaS5tZXRlb2ZyYW5jZS5mcjo0NDNcL29hdXRoMlwvdG9rZW4iLCJ0aWVySW5mbyI6eyI2MFJlcVBhck1pbiI6eyJ0aWVyUXVvdGFUeXBlIjoicmVxdWVzdENvdW50IiwiZ3JhcGhRTE1heENvbXBsZXhpdHkiOjAsImdyYXBoUUxNYXhEZXB0aCI6MCwic3RvcE9uUXVvdGFSZWFjaCI6dHJ1ZSwic3Bpa2VBcnJlc3RMaW1pdCI6MCwic3Bpa2VBcnJlc3RVbml0Ijoic2VjIn19LCJrZXl0eXBlIjoiUFJPRFVDVElPTiIsInN1YnNjcmliZWRBUElzIjpbeyJzdWJzY3JpYmVyVGVuYW50RG9tYWluIjoiY2FyYm9uLnN1cGVyIiwibmFtZSI6IkRvbm5lZXNQdWJsaXF1ZXNWaWdpbGFuY2UiLCJjb250ZXh0IjoiXC9wdWJsaWNcL0RQVmlnaWxhbmNlXC92MSIsInB1Ymxpc2hlciI6ImFkbWluIiwidmVyc2lvbiI6InYxIiwic3Vic2NyaXB0aW9uVGllciI6IjYwUmVxUGFyTWluIn1dLCJleHAiOjE4MzYzNTc4NjMsInRva2VuX3R5cGUiOiJhcGlLZXkiLCJpYXQiOjE3NDE2ODUwNjMsImp0aSI6IjQ5YTAzMTJmLTUyNjctNDRmNC1iNGYxLWI5YTFlZjY4N2Y4ZiJ9.i5QWxDyyQXgN8JbqYGDpDxdZXVld4mBoFtfVGfKquyboPp02lpT7huL6DJmh0Y4yMr6UmRVBTTB5rd1McC_oxBbk-uEBiLxXggMh23OkhtjjUzxbYkiktWWiVf5WTHPYvRHcXLxyxcd6freSL2XvTCIFyc41dTJK0a5YpZzlGfw6-UIQgxFHgx7vXBZmDkmthw1TrdFZRDWWyIs8Zyy6aEubdmHaJPI4s7G3l0mrQE4KyAsqwSrnCxWwVTWMD-XCbtcUdVYe6Ey3Vkr-3t3lUCH0zsAXOvfBvKP1n53pMzVOU-A5N33dSiCtq-xJ4vd9su1vchGDK1MO40CVWx_E8w=="
-    vigilance_service = MeteoFranceVigilanceService(api_key)
-    api_alerts = vigilance_service.get_vigilance_alerts()
+    # Récupérer les alertes de Météo France
+    try:
+        meteo_france_service = MeteoFranceVigilanceService(settings.METEO_FRANCE_API_KEY)
+        meteo_france_alerts = meteo_france_service.get_vigilance_alerts()
+    except Exception as e:
+        logger.error(f"Erreur lors de la récupération des alertes Météo France: {str(e)}")
+        meteo_france_alerts = []
     
-    # Filtrer les alertes de l'API si un type est spécifié
-    if alert_type and api_alerts:
-        filtered_api_alerts = []
-        for alert in api_alerts:
-            alert_text = (alert.get('type_label', '') + ' ' + alert.get('description', '')).lower()
-            if alert_type in type_mapping:
-                if any(term in alert_text for term in type_mapping[alert_type]):
-                    filtered_api_alerts.append(alert)
-            elif alert_type.lower() in alert_text:
-                filtered_api_alerts.append(alert)
-        api_alerts = filtered_api_alerts
+    # Filtrer les alertes Météo France par type et région si spécifiés
+    if meteo_france_alerts:
+        filtered_alerts = []
+        for alert in meteo_france_alerts:
+            type_label = alert.get('type_label', '').lower()
+            alert_region = alert.get('region', '').lower()
+            
+            # Vérifier le type d'alerte
+            type_match = not alert_type or (
+                (alert_type == 'rain' and ('pluie' in type_label or 'précipitation' in type_label or 'inondation' in type_label)) or
+                (alert_type == 'wind' and 'vent' in type_label) or
+                (alert_type == 'storm' and 'orage' in type_label) or
+                (alert_type == 'snow' and ('neige' in type_label or 'verglas' in type_label)) or
+                (alert_type == 'heat' and ('chaleur' in type_label or 'canicule' in type_label)) or
+                (alert_type == 'flood' and 'inondation' in type_label)
+            )
+            
+            # Vérifier la région
+            region_match = not region or (region.lower() in alert_region)
+            
+            if type_match and region_match:
+                filtered_alerts.append(alert)
+        
+        meteo_france_alerts = filtered_alerts
     
-    # Combiner les alertes de la base de données et de l'API
-    all_alerts = formatted_alerts + api_alerts
+    # Combiner les alertes
+    all_alerts = db_alerts + meteo_france_alerts
     
-    # Si aucune alerte n'est trouvée, ajouter des alertes de test pour le développement
-    if not all_alerts:
-        today = datetime.now().date()
+    # Si aucune alerte n'est trouvée et qu'il n'y a pas de filtre, ajouter des alertes de test
+    if not all_alerts and not (alert_type or region):
         test_alerts = [
             {
-                'id': 1,
-                'type_label': 'Alerte Vent',
-                'region': 'Bretagne',
-                'description': 'Vents violents attendus avec des rafales jusqu\'à 100 km/h.',
-                'date_alert': today,
+                'type_label': 'Orages',
+                'region': 'Île-de-France',
+                'description': 'Orages localement violents avec risque de grêle et rafales de vent.',
                 'severity': 'orange',
+                'date_alert': timezone.now(),
                 'severity_display': 'Orange'
             },
             {
-                'id': 2,
-                'type_label': 'Alerte Pluie',
-                'region': 'Normandie',
-                'description': 'Fortes précipitations prévues, risque d\'inondation localisée.',
-                'date_alert': today + timedelta(days=1),
-                'severity': 'yellow',
-                'severity_display': 'Jaune'
+                'type_label': 'Canicule',
+                'region': 'Provence-Alpes-Côte d\'Azur',
+                'description': 'Températures élevées pendant plusieurs jours consécutifs.',
+                'severity': 'red',
+                'date_alert': timezone.now(),
+                'severity_display': 'Rouge'
             },
             {
-                'id': 3,
-                'type_label': 'Alerte Canicule',
-                'region': 'Provence-Alpes-Côte d\'Azur',
-                'description': 'Températures élevées dépassant les 35°C pendant plusieurs jours.',
-                'date_alert': today + timedelta(days=2),
-                'severity': 'red',
-                'severity_display': 'Rouge'
+                'type_label': 'Pluie-Inondation',
+                'region': 'Occitanie',
+                'description': 'Fortes précipitations avec risque de débordement des cours d\'eau.',
+                'severity': 'orange',
+                'date_alert': timezone.now(),
+                'severity_display': 'Orange'
             }
         ]
-        
-        # Si un type d'alerte est spécifié, ne retourner que les alertes de test correspondantes
-        if alert_type:
-            if alert_type == 'wind':
-                all_alerts = [test_alerts[0]]
-            elif alert_type == 'rain':
-                all_alerts = [test_alerts[1]]
-            elif alert_type == 'heat':
-                all_alerts = [test_alerts[2]]
-            else:
-                all_alerts = []
+        all_alerts = test_alerts
+    
+    # Ordre de priorité des niveaux de sévérité
+    severity_order = {
+        'red': 1,
+        'orange': 2,
+        'yellow': 3
+    }
+    
+    # Fonction pour obtenir une valeur numérique pour le tri par date
+    def get_date_value(alert):
+        date_alert = alert.get('date_alert')
+        if isinstance(date_alert, datetime):
+            return date_alert.timestamp()
+        elif isinstance(date_alert, datetime.date):
+            return datetime.combine(date_alert, datetime.min.time()).timestamp()
+        elif isinstance(date_alert, str):
+            try:
+                return datetime.strptime(date_alert, '%Y-%m-%d').timestamp()
+            except ValueError:
+                try:
+                    return datetime.strptime(date_alert, '%Y-%m-%dT%H:%M:%S').timestamp()
+                except ValueError:
+                    return datetime.now().timestamp()
         else:
-            all_alerts = test_alerts
+            return datetime.now().timestamp()
+    
+    # Trier les alertes
+    all_alerts.sort(key=lambda x: (
+        severity_order.get(x.get('severity', 'yellow'), 3),
+        -get_date_value(x)
+    ))
+    
+    # Limiter le nombre d'alertes si demandé
+    if limit is not None:
+        all_alerts = all_alerts[:limit]
     
     return all_alerts

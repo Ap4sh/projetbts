@@ -2,6 +2,57 @@
 
 {% block title %}Météo {{ city }} - Détails{% endblock title %}
 
+{% block extra_css %}
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<style>
+    /* Styles pour corriger l'affichage des contrôles de couches */
+    .leaflet-control-layers {
+        max-height: 300px !important;
+        overflow-y: auto !important;
+        padding: 6px 10px 6px 6px !important;
+        background: white !important;
+        border-radius: 0.5rem !important;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.2) !important;
+        position: absolute !important;
+        top: 10px !important;
+        right: 10px !important;
+        z-index: 1000 !important;
+    }
+    
+    .leaflet-control-layers-expanded {
+        padding: 6px 10px 6px 6px !important;
+        background: white !important;
+        border-radius: 0.5rem !important;
+        max-height: 300px !important;
+        overflow-y: auto !important;
+    }
+    
+    .leaflet-control-layers-selector {
+        margin-top: 2px !important;
+    }
+    
+    .leaflet-control-layers-list {
+        margin-bottom: 0 !important;
+        max-height: 250px !important;
+        overflow-y: auto !important;
+    }
+    
+    .leaflet-control-layers-overlays {
+        max-height: 200px !important;
+        overflow-y: auto !important;
+    }
+    
+    /* Styles pour les légendes OWM */
+    .owm-legend {
+        max-height: 300px;
+        overflow-y: auto;
+        background: rgba(255, 255, 255, 0.8);
+        padding: 10px;
+        border-radius: 5px;
+    }
+</style>
+{% endblock extra_css %}
+
 {% block content %}
 <div class="container mx-auto px-4 py-6">
     <!-- En-tête avec le nom de la ville et les données principales -->
@@ -103,18 +154,9 @@
     <!-- Carte de localisation -->
     <div>
         <h2 class="text-2xl font-bold mb-4">Localisation</h2>
-        <div class="h-[300px] bg-base-200 rounded-box">
+        <div class="h-[400px] bg-base-200 rounded-box">
             {% if current_weather.coordinates %}
-            <iframe
-                width="100%"
-                height="100%"
-                frameborder="0"
-                scrolling="no"
-                marginheight="0"
-                marginwidth="0"
-                src="https://www.openstreetmap.org/export/embed.html?bbox={{ current_weather.coordinates.lon|add:'-0.1' }}%2C{{ current_weather.coordinates.lat|add:'-0.1' }}%2C{{ current_weather.coordinates.lon|add:'0.1' }}%2C{{ current_weather.coordinates.lat|add:'0.1' }}&amp;layer=mapnik&amp;marker={{ current_weather.coordinates.lat }}%2C{{ current_weather.coordinates.lon }}"
-                class="rounded-box"
-            ></iframe>
+            <div id="city-map" class="w-full h-full rounded-box"></div>
             {% else %}
             <div class="flex items-center justify-center h-full">
                 <p>Carte non disponible</p>
@@ -123,4 +165,97 @@
         </div>
     </div>
 </div>
-{% endblock content %} 
+
+{% if current_weather.coordinates %}
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+    document.addEventListener("DOMContentLoaded", function() {
+        // Coordonnées de la ville (converties en variables JavaScript)
+        var lat = parseFloat("{{ current_weather.coordinates.lat|floatformat:6 }}".replace(",", "."));
+        var lon = parseFloat("{{ current_weather.coordinates.lon|floatformat:6 }}".replace(",", "."));
+        var cityName = "{{ city }}";
+        
+        // Initialiser la carte
+        var map = L.map('city-map').setView([lat, lon], 12);
+        
+        // Ajouter la couche de base OpenStreetMap
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; OpenStreetMap contributors'
+        }).addTo(map);
+        
+        // Ajouter un marqueur pour la ville
+        var marker = L.marker([lat, lon]).addTo(map);
+        marker.bindPopup("<b>" + cityName + "</b><br>{{ current_weather.weather.description|capfirst }}").openPopup();
+        
+        // Clé API OpenWeatherMap
+        var apiKey = 'a6b2d8524308570bedd6e593c1f5a8b6';
+        
+        // Créer les couches météo manuellement
+        var precipitationLayer = L.tileLayer('https://tile.openweathermap.org/map/precipitation_new/{z}/{x}/{y}.png?appid=' + apiKey, {
+            attribution: 'OpenWeatherMap',
+            maxZoom: 19,
+            opacity: 0.6
+        });
+        
+        var tempLayer = L.tileLayer('https://tile.openweathermap.org/map/temp_new/{z}/{x}/{y}.png?appid=' + apiKey, {
+            attribution: 'OpenWeatherMap',
+            maxZoom: 19,
+            opacity: 0.6
+        });
+        
+        var windLayer = L.tileLayer('https://tile.openweathermap.org/map/wind_new/{z}/{x}/{y}.png?appid=' + apiKey, {
+            attribution: 'OpenWeatherMap',
+            maxZoom: 19,
+            opacity: 0.6
+        });
+        
+        var pressureLayer = L.tileLayer('https://tile.openweathermap.org/map/pressure_new/{z}/{x}/{y}.png?appid=' + apiKey, {
+            attribution: 'OpenWeatherMap',
+            maxZoom: 19,
+            opacity: 0.6
+        });
+        
+        var cloudsLayer = L.tileLayer('https://tile.openweathermap.org/map/clouds_new/{z}/{x}/{y}.png?appid=' + apiKey, {
+            attribution: 'OpenWeatherMap',
+            maxZoom: 19,
+            opacity: 0.6
+        });
+        
+        // Ajouter le contrôle de couches
+        var baseMaps = {
+            "OpenStreetMap": L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '&copy; OpenStreetMap contributors'
+            })
+        };
+        
+        var overlayMaps = {
+            "Précipitations": precipitationLayer,
+            "Température": tempLayer,
+            "Vent": windLayer,
+            "Pression": pressureLayer,
+            "Nuages": cloudsLayer
+        };
+        
+        L.control.layers(baseMaps, overlayMaps, {
+            collapsed: false
+        }).addTo(map);
+        
+        // Ajouter la couche de précipitations par défaut
+        precipitationLayer.addTo(map);
+        
+        // Forcer une mise à jour de la taille après un court délai
+        setTimeout(function() {
+            map.invalidateSize();
+        }, 500);
+        
+        // Ajouter un gestionnaire de redimensionnement
+        window.addEventListener('resize', function() {
+            map.invalidateSize();
+        });
+    });
+</script>
+{% endif %}
+{% endblock content %}
+
+{% block extra_js %}
+{% endblock extra_js %} 

@@ -1,8 +1,177 @@
 {% load static %}
 
-<div class="france-map-container w-full h-full bg-base-300 rounded-box flex items-center justify-center">
-    <div class="text-center">
-        <p class="text-lg">Carte météorologique de la France</p>
-        <p class="text-sm opacity-70">(en cours)</p>
+<!-- Importation des styles Leaflet dans le head -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+
+<div class="france-map-container w-full h-full bg-base-300 rounded-box">
+    <!-- Conteneur de la carte avec hauteur fixe -->
+    <div id="map-container" class="w-full h-full flex flex-col">
+        <div class="p-2 text-center">
+            <h3 class="text-lg font-bold">Carte météorologique de la France</h3>
+            <p class="text-sm opacity-70 mb-2">Chargement de la carte météo...</p>
+        </div>
+        
+        <!-- La carte elle-même -->
+        <div id="map" class="flex-grow w-full rounded-b-box"></div>
     </div>
-</div> 
+</div>
+
+<!-- Importation de Leaflet -->
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+<script>
+    document.addEventListener("DOMContentLoaded", function () {
+        // S'assurer que la carte est initialisée après que le DOM soit complètement chargé
+        setTimeout(function () {
+            // Récupérer l'élément de la carte
+            var mapElement = document.getElementById('map');
+            
+            // Vérifier si l'élément existe
+            if (!mapElement) {
+                console.error("Élément de carte introuvable");
+                return;
+            }
+            
+            // Initialiser la carte
+            var map = L.map('map', {
+                zoomControl: true,
+                scrollWheelZoom: true  // Activer le zoom avec la molette
+            }).setView([46.6031, 1.8883], 5);  // Centrage sur la France avec un zoom adapté
+            
+            // Forcer la mise à jour de la taille de la carte
+            map.invalidateSize();
+
+            // Ajout de la couche OpenStreetMap
+            var baseLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '&copy; OpenStreetMap contributors'
+            }).addTo(map);
+
+            // Clé API OpenWeatherMap
+            var apiKey = 'a6b2d8524308570bedd6e593c1f5a8b6';
+
+            // Créer les couches météo manuellement
+            var precipitationLayer = L.tileLayer('https://tile.openweathermap.org/map/precipitation_new/{z}/{x}/{y}.png?appid=' + apiKey, {
+                attribution: 'OpenWeatherMap',
+                maxZoom: 19,
+                opacity: 0.6
+            });
+            
+            var tempLayer = L.tileLayer('https://tile.openweathermap.org/map/temp_new/{z}/{x}/{y}.png?appid=' + apiKey, {
+                attribution: 'OpenWeatherMap',
+                maxZoom: 19,
+                opacity: 0.6
+            });
+            
+            var windLayer = L.tileLayer('https://tile.openweathermap.org/map/wind_new/{z}/{x}/{y}.png?appid=' + apiKey, {
+                attribution: 'OpenWeatherMap',
+                maxZoom: 19,
+                opacity: 0.6
+            });
+            
+            var pressureLayer = L.tileLayer('https://tile.openweathermap.org/map/pressure_new/{z}/{x}/{y}.png?appid=' + apiKey, {
+                attribution: 'OpenWeatherMap',
+                maxZoom: 19,
+                opacity: 0.6
+            });
+            
+            var cloudsLayer = L.tileLayer('https://tile.openweathermap.org/map/clouds_new/{z}/{x}/{y}.png?appid=' + apiKey, {
+                attribution: 'OpenWeatherMap',
+                maxZoom: 19,
+                opacity: 0.6
+            });
+
+            // Ajouter la couche de précipitations par défaut
+            precipitationLayer.addTo(map);
+
+            // Créer les contrôles de couches
+            var baseMaps = {
+                "OpenStreetMap": baseLayer
+            };
+            
+            var overlayMaps = {
+                "Précipitations": precipitationLayer,
+                "Température": tempLayer,
+                "Vent": windLayer,
+                "Pression": pressureLayer,
+                "Nuages": cloudsLayer
+            };
+
+            // Ajouter le contrôle de couches
+            L.control.layers(baseMaps, overlayMaps, {
+                collapsed: false
+            }).addTo(map);
+            
+            // Mettre à jour le texte d'aide
+            document.querySelector('.france-map-container p.opacity-70').textContent = 
+                "Utilisez le menu en haut à droite pour changer la couche météo";
+            
+            // Ajouter un gestionnaire de redimensionnement
+            window.addEventListener('resize', function() {
+                map.invalidateSize();
+            });
+            
+            // Forcer une mise à jour de la taille après un court délai
+            setTimeout(function() {
+                map.invalidateSize();
+            }, 1000);
+        }, 500);
+    });
+</script>
+
+<style>
+    /* Styles pour assurer un bon affichage de la carte */
+    .france-map-container {
+        min-height: 400px;
+        position: relative;
+    }
+    
+    #map-container {
+        min-height: 400px;
+    }
+    
+    #map {
+        min-height: 350px;
+        z-index: 1;  /* S'assurer que la carte est au-dessus des autres éléments */
+    }
+    
+    /* Correction des styles Leaflet pour s'adapter à DaisyUI */
+    .leaflet-control-layers {
+        max-height: 300px !important;
+        overflow-y: auto !important;
+        border-radius: 0.5rem !important;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.2) !important;
+        position: absolute !important;
+        top: 10px !important;
+        right: 10px !important;
+        z-index: 1000 !important;
+    }
+    
+    .leaflet-control-zoom {
+        border-radius: 0.5rem !important;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.2) !important;
+    }
+    
+    /* S'assurer que le contrôle de couches est visible */
+    .leaflet-control-layers-expanded {
+        padding: 6px 10px 6px 6px !important;
+        background: white !important;
+        border-radius: 0.5rem !important;
+        max-height: 300px !important;
+        overflow-y: auto !important;
+    }
+    
+    .leaflet-control-layers-selector {
+        margin-top: 2px !important;
+    }
+    
+    .leaflet-control-layers-list {
+        margin-bottom: 0 !important;
+        max-height: 250px !important;
+        overflow-y: auto !important;
+    }
+    
+    .leaflet-control-layers-overlays {
+        max-height: 200px !important;
+        overflow-y: auto !important;
+    }
+</style>
