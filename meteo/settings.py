@@ -61,6 +61,7 @@ TEMPLATES = [
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
         'DIRS': [
             BASE_DIR / 'templates',
+            BASE_DIR / 'weather/templates/weather'
         ],
         'APP_DIRS': True,
         'OPTIONS': {

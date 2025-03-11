@@ -1,5 +1,6 @@
 from django.shortcuts import render
 from django.contrib.auth.decorators import login_required
+from django.contrib.auth import authenticate, login
 from django.http import JsonResponse, HttpResponse
 from .models import Alert, CustomUser, TypeAlert
 from .services.weather_api import OpenWeatherMapService, MAIN_FRENCH_CITIES
@@ -56,6 +57,15 @@ def profile(request):
     }
     
     return render(request, 'weather/profile.html', context)
+
+def login_view(request):
+    return render(request, 'login.html')
+
+def register(request):
+    pass
+
+
+
 
 def weather_detail(request, city):
     """

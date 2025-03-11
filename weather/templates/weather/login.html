@@ -1,0 +1,76 @@
+{% extends 'base.html' %}
+
+{% block title %}Météo France - Connexion{% endblock title %}
+
+{% block content %}
+<div class="container mx-auto px-4 py-8">
+    <div class="max-w-sm mx-auto">
+        <div class="card bg-base-100 shadow-lg">
+            <div class="card-body p-5">
+                <h2 class="text-xl font-bold mb-4 text-center">Connexion</h2>
+
+                <div id="login-messages" class="mb-3">
+                    {% if messages %}
+                    {% for message in messages %}
+                    <div class="alert alert-error py-2 text-sm">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="stroke-current shrink-0 h-5 w-5" fill="none" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                        <span>{{ message }}</span>
+                    </div>
+                    {% endfor %}
+                    {% endif %}
+                </div>
+
+                <form
+                        hx-post="{% url 'weather:login' %}"
+                        hx-target="#login-messages"
+                        hx-swap="innerHTML"
+                        hx-indicator="#login-spinner"
+                        hx-trigger="submit"
+                        hx-on::after-request="if(event.detail.successful) { window.location.href = '{% url 'weather:home' %}'; }">
+
+                    {% csrf_token %}
+
+                    <div class="form-control">
+                        <label class="label py-1">
+                            <span class="label-text text-sm">Nom d'utilisateur</span>
+                        </label>
+                        <input type="text" name="username" placeholder="Entrez votre nom d'utilisateur" class="input input-bordered input-sm w-full" required />
+                    </div>
+
+                    <div class="form-control mt-2">
+                        <label class="label py-1">
+                            <span class="label-text text-sm">Mot de passe</span>
+                        </label>
+                        <input type="password" name="password" placeholder="Entrez votre mot de passe" class="input input-bordered input-sm w-full" required />
+                    </div>
+
+                    <div class="form-control mt-3">
+                        <button type="submit" class="btn btn-primary btn-sm w-full">
+                            <span id="login-spinner" class="htmx-indicator loading loading-spinner loading-xs mr-1"></span>
+                            Connexion
+                        </button>
+                    </div>
+                </form>
+
+                <div class="divider my-2 text-xs">OU</div>
+
+                <div class="text-center text-sm">
+                    <span class="text-xs">Pas encore de compte?</span>
+                    <a href="" class="btn btn-ghost btn-xs mt-1">Créer un compte</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock content %}
+
+{% block htmx_scripts %}
+<style>
+    .htmx-indicator {
+        display: none;
+    }
+    .htmx-request .htmx-indicator {
+        display: inline-block;
+    }
+</style>
+{% endblock htmx_scripts %}
