@@ -80,7 +80,7 @@ def login_view(request):
     return render(request, 'login.html')
 
 def register(request):
-    pass
+    return render(request, 'register.html')
 
 
 
