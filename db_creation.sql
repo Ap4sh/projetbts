@@ -96,7 +96,7 @@ INSERT INTO Cities VALUES
 (7, 'Quimper', 4);
 
 INSERT INTO Alerts VALUES
-(1, 'Gigantesque tempête de flammes dans le sas d'entrée d'un bâtiment de Bruz', 1, 19/03/2025, 3, 1),
+(1, "Gigantesque tempête de flammes dans le sas d'entrée d'un bâtiment de Bruz", 1, 19/03/2025, 3, 1),
 (2, 'Vite fait du vent', 1, 19/03/2025, 1, 2);
 
 INSERT INTO Weather VALUES
