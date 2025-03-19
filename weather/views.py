@@ -1,6 +1,7 @@
-from django.shortcuts import render
+from django.shortcuts import render, redirect
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth import authenticate, login
+from django.contrib.auth.models import User
 from django.http import JsonResponse, HttpResponse
 from .models import Alert, CustomUser, TypeAlert
 from .services.weather_api import OpenWeatherMapService, MAIN_FRENCH_CITIES, MeteoFranceVigilanceService
@@ -9,6 +10,7 @@ from django.utils import timezone
 from django.db.models import Q
 import logging
 from django.conf import settings
+
 
 logger = logging.getLogger(__name__)
 
@@ -77,9 +79,30 @@ def profile(request):
     return render(request, 'weather/profile.html', context)
 
 def login_view(request):
+    if request.method == "POST" :
+        username = request.get("username")
+        password = request.get("password")
+        if User.objects.filter(username = email, password = password).exists() :
+            return redirect(request, 'home.html')          
     return render(request, 'login.html')
 
 def register(request):
+    if request.method == "POST" :
+        username = request.get("username")
+        password = request.get("password")
+        if User.objects.filter(username = email).exists() :
+            messages = ["Un compte utilisateur est déjà associé à cette adresse mail."]
+            context = {
+                'messages' : messages
+            }
+            return render(request, 'register.html', context)
+        else : 
+            User.objects.create_user(username = email, password = password)
+            custom_user = CustomUser.objects.get(email = request.user.email)
+            context = {
+                'custom_user' : custom_user
+            }
+            return redirect(request, 'profile.html', context)
     return render(request, 'register.html')
 
 
