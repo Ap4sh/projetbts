@@ -59,13 +59,8 @@
                 }
             });
             
-            // Soumettre le formulaire quand on appuie sur Entrée
-            searchInput.addEventListener('keypress', function(e) {
-                if (e.key === 'Enter') {
-                    e.preventDefault();
-                    searchForm.dispatchEvent(new Event('submit'));
-                }
-            });
+            // iker: j'ai retirer le keypress handler qui était en conflit avec
+            // le htmx, ça marche quand on appuie sur entrée mtn
         }
     });
 </script> 
