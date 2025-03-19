@@ -23,41 +23,70 @@
     .htmx-request .htmx-indicator {
         display: inline-block;
     }
+
+
 </style>
 {% endblock extra_css %}
 
 {% block content %}
 <div class="page-background"></div>
-<p>coucou lol</p>
-<form
-hx-post="{% url 'weather:login' %}"
-hx-target="#login-messages"
-hx-swap="innerHTML"
-hx-indicator="#login-spinner"
-hx-trigger="submit"
-hx-on::after-request="if(event.detail.successful) { window.location.href = '{% url 'weather:home' %}'; }">
 
-{% csrf_token %}
+<div class="hero flex-grow">
+    <div class="hero-content flex-col">
+        <div class="card flex-shrink-0 w-full max-w-sm shadow-2xl bg-base-100">
+            <div class="card-body">
+                <h1 class="text-2xl font-bold text-center mb-4">Connexion</h1>
+                <div id="login-messages">
+                    {% if messages %}
+                    {% for message in messages %}
+                    <div class="alert alert-error py-2 mb-4">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="stroke-current shrink-0 h-5 w-5" fill="none" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                        <span>{{ message }}</span>
+                    </div>
+                    {% endfor %}
+                    {% endif %}
+                </div>
 
-<div class="form-control">
-<label class="label">
-    <span class="label-text">Nom d'utilisateur</span>
-</label>
-<input type="text" name="username" placeholder="Nom d'utilisateur" class="input input-bordered" required />
+                <form
+                        hx-post="{% url 'weather:login' %}"
+                        hx-target="#login-messages"
+                        hx-swap="innerHTML"
+                        hx-indicator="#login-spinner"
+                        hx-trigger="submit"
+                        hx-on::after-request="if(event.detail.successful) { window.location.href = '{% url 'weather:home' %}'; }">
+
+                    {% csrf_token %}
+
+                    <div class="form-control">
+                        <label class="label">
+                            <span class="label-text">E-Mail<style="color:red;">*</style></span>
+                        </label>
+                        <input type="email" name="email" placeholder="user@meteo.io" class="input input-bordered" required />
+                    </div>
+
+                    <div class="form-control">
+                        <label class="label">
+                            <span class="label-text">Mot de passe<style="color:red;">*</style></span>
+                        </label>
+                        <input type="password" name="password" placeholder="Mot de passe" class="input input-bordered" required />
+                    </div>
+
+                    <div class="form-control">
+                        <label class="label">
+                            <span class="label-text">Ville</span>
+                        </label>
+                        <input type="text" name="city" placeholder="Ville" class="input input-bordered" />
+                    </div>
+
+                    <div class="form-control mt-6">
+                        <button type="submit" class="btn btn-primary">
+                            <span id="login-spinner" class="htmx-indicator loading loading-spinner loading-xs mr-2"></span>
+                            Créer le compte
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
 </div>
-
-<div class="form-control">
-<label class="label">
-    <span class="label-text">Mot de passe</span>
-</label>
-<input type="password" name="password" placeholder="Mot de passe" class="input input-bordered" required />
-</div>
-
-<div class="form-control mt-6">
-<button type="submit" class="btn btn-primary">
-    <span id="login-spinner" class="htmx-indicator loading loading-spinner loading-xs mr-2"></span>
-    Connexion
-</button>
-</div>
-</form>
 {% endblock content %}

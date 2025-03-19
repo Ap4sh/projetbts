@@ -97,7 +97,7 @@ def register(request):
             }
             return render(request, 'register.html', context)
         else : 
-            User.objects.create_user(username = email, password = password)
+            User.objects.create_user(username = email, password = password, city = city)
             custom_user = CustomUser.objects.get(email = request.user.email)
             context = {
                 'custom_user' : custom_user
