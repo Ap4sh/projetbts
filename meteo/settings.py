@@ -144,3 +144,8 @@ METEO_FRANCE_API_KEY = os.getenv('METEO_FRANCE_API_KEY')
 # https://docs.djangoproject.com/en/5.1/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+
+
+# URL de connexion utilisée pour rediriger les utilisateurs non authentifiés
+LOGIN_URL = '/login/'
