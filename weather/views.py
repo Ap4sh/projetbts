@@ -51,7 +51,7 @@ def home(request):
     
     return render(request, 'weather/home.html', context)
 
-@login_required
+#@login_required
 def profile(request):
     # Récupérer l'utilisateur personnalisé correspondant à l'utilisateur Django
     custom_user = None
@@ -80,17 +80,17 @@ def profile(request):
 
 def login_view(request):
     if request.method == "POST" :
-        username = request.get("username")
-        password = request.get("password")
-        if User.objects.filter(username = email, password = password).exists() :
+        email = request.POST.get("email")
+        password = request.POST.get("password")
+        if User.objects.filter(email = email, password = password).exists() :
             return redirect(request, 'home.html')          
     return render(request, 'login.html')
 
 def register(request):
     if request.method == "POST" :
-        username = request.get("username")
-        password = request.get("password")
-        if User.objects.filter(username = email).exists() :
+        email = request.POST.get("email")
+        password = request.POST.get("password")
+        if User.objects.filter(email = email).exists() :
             messages = ["Un compte utilisateur est déjà associé à cette adresse mail."]
             context = {
                 'messages' : messages
