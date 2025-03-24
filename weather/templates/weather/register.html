@@ -35,7 +35,7 @@
     <div class="hero-content flex-col">
         <div class="card flex-shrink-0 w-full max-w-sm shadow-2xl bg-base-100">
             <div class="card-body">
-                <h1 class="text-2xl font-bold text-center mb-4">Connexion</h1>
+                <h1 class="text-2xl font-bold text-center mb-4">Inscription</h1>
                 <div id="login-messages">
                     {% if messages %}
                     {% for message in messages %}
@@ -48,7 +48,7 @@
                 </div>
 
                 <form
-                        hx-post="{% url 'weather:login' %}"
+                        hx-post="{% url 'weather:register' %}"
                         hx-target="#login-messages"
                         hx-swap="innerHTML"
                         hx-indicator="#login-spinner"
@@ -59,14 +59,14 @@
 
                     <div class="form-control">
                         <label class="label">
-                            <span class="label-text">E-Mail<style="color:red;">*</style></span>
+                            <span class="label-text">E-Mail<font color=red>*</font></span>
                         </label>
                         <input type="email" name="email" placeholder="user@meteo.io" class="input input-bordered" required />
                     </div>
 
                     <div class="form-control">
                         <label class="label">
-                            <span class="label-text">Mot de passe<style="color:red;">*</style></span>
+                            <span class="label-text">Mot de passe<font color=red>*</font></span>
                         </label>
                         <input type="password" name="password" placeholder="Mot de passe" class="input input-bordered" required />
                     </div>

@@ -55,10 +55,10 @@ def home(request):
 def profile(request):
     # Récupérer l'utilisateur personnalisé correspondant à l'utilisateur Django
     custom_user = None
-    try:
-        custom_user = CustomUser.objects.get(email=request.user.email)
-    except CustomUser.DoesNotExist:
-        pass
+    # try:
+    #     custom_user = CustomUser.objects.get(email=request.user.email)
+    # except CustomUser.DoesNotExist:
+    #     pass
     
     weather_data = None
     forecast_data = None
