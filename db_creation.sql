@@ -37,9 +37,9 @@ CREATE TABLE IF NOT EXISTS Alerts (
     active INT,
     date_alert DATE,
     fk_type INT NOT NULL,
-    region INT NOT NULL,
+    department INT NOT NULL,
     FOREIGN KEY (fk_type) REFERENCES Type_alert(id),
-    FOREIGN KEY (region) REFERENCES Regions(id)
+    FOREIGN KEY (department) REFERENCES Departments(id)
 );
 
 CREATE TABLE IF NOT EXISTS Users (
@@ -105,7 +105,7 @@ INSERT INTO Cities VALUES
 
 INSERT INTO Alerts VALUES
 (1, "Gigantesque tempête de flammes dans le sas d'entrée d'un bâtiment de Bruz", 1, '2025-03-19', 3, 1),
-(2, 'Vite fait du vent', 1, '2025-03-19', 1, 2);
+(2, 'Vite fait du vent', 1, '2025-03-19', 1, 1);
 
 INSERT INTO Weather VALUES
 (1, '2025-03-19', 18, 21, 50, 42, 172, '09:30', '16:13', 4, 5),
