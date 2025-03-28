@@ -14,6 +14,6 @@ class AlertAdmin(admin.ModelAdmin):
 
 @admin.register(CustomUser)
 class CustomUserAdmin(admin.ModelAdmin):
-    list_display = ('email', 'region', 'city')
-    search_fields = ('email', 'region', 'city') 
+    list_display = ('email', 'city')
+    search_fields = ('email', 'city') 
 

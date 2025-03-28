@@ -82,22 +82,23 @@ def login_view(request):
     if request.method == "POST" :
         email = request.POST.get("email")
         password = request.POST.get("password")
-        if User.objects.filter(email = email, password = password).exists() :
-            return redirect(request, 'home.html')          
+        if CustomUser.objects.filter(email = email, password = password).exists() :
+            return redirect(request, 'profile.html')          
     return render(request, 'login.html')
 
 def register(request):
     if request.method == "POST" :
         email = request.POST.get("email")
         password = request.POST.get("password")
-        if User.objects.filter(email = email).exists() :
+        city = request.POST.get("city")
+        if CustomUser.objects.filter(email = email).exists() :
             messages = ["Un compte utilisateur est déjà associé à cette adresse mail."]
             context = {
                 'messages' : messages
             }
             return render(request, 'register.html', context)
         else : 
-            User.objects.create_user(username = email, password = password, city = city)
+            CustomUser.objects.create_user(email = email, password = password, city = city)
             custom_user = CustomUser.objects.get(email = request.user.email)
             context = {
                 'custom_user' : custom_user

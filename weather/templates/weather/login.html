@@ -53,7 +53,8 @@
                         hx-swap="innerHTML"
                         hx-indicator="#login-spinner"
                         hx-trigger="submit"
-                        hx-on::after-request="if(event.detail.successful) { window.location.href = '{% url 'weather:home' %}'; }">
+                        hx-on::after-request="if(event.detail.successful) { window.location.href = '{% url 'weather:profile' %}'; }">
+
 
                     {% csrf_token %}
 

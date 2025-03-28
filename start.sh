@@ -18,7 +18,7 @@ docker-compose down -v
 
 # Récupérer les derniers changements du dépôt Git
 echo -e "\n🔄 ÉTAPE 2/8 : Récupération des derniers changements du dépôt Git..."
-git pull --rebase origin main
+#git pull --rebase origin main
 
 # Reconstruire les images Docker
 echo -e "\n🏗️ ÉTAPE 3/8 : Reconstruction des images Docker..."

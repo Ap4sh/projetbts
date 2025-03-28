@@ -12,8 +12,6 @@ CREATE TABLE IF NOT EXISTS Type_sky (
     label VARCHAR(100)
 );
 
-
-
 CREATE TABLE IF NOT EXISTS Regions (
     id INT PRIMARY KEY NOT NULL AUTO_INCREMENT,
     label VARCHAR(100)
@@ -81,6 +79,7 @@ INSERT INTO Type_sky (label) VALUES
 ('Ciel orageux'),
 ('Ciel menaçant');
 
+
 -- Entrées tests au sein des tables ;
 
 
@@ -112,7 +111,7 @@ INSERT INTO Weather VALUES
 (1, '2025-03-19', 18, 21, 50, 42, 172, '09:30', '16:13', 4, 5),
 (2, '2025-03-19', 31, 36, 25, 8, 21, '05:02', '23:56', 1, 1);
 
-INSERT INTO Users VALUES
+INSERT INTO Users VALUES 
 (1, 'frederic@gmail.com', 'jemappellecyril', 6),
 (2, 'admin@admin.com', 'admin', 5),
 (3, 'nasradmin@raison.fort', '0101', 1);
