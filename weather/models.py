@@ -2,6 +2,35 @@ from django.db import models
 from django.contrib.auth.models import User, AbstractUser
 from django.contrib.auth.base_user import BaseUserManager
 
+class Cities(models.Model):
+    """
+    Modèle pour les villes.
+    Correspond à la table Cities dans la base de données.
+    """
+    id = models.AutoField(primary_key=True)
+    label = models.CharField(max_length=100)
+    department = models.ForeignKey('Departments', on_delete=models.CASCADE)
+    
+    class Meta:
+        db_table = 'Cities'
+        
+    def __str__(self):
+        return self.label
+
+class Departments(models.Model):
+    """
+    Modèle pour les départements.
+    Correspond à la table Departments dans la base de données.
+    """
+    id = models.AutoField(primary_key=True)
+    label = models.CharField(max_length=100)
+    
+    class Meta:
+        db_table = 'Departments'
+        
+    def __str__(self):
+        return self.label
+
 class TypeAlert(models.Model):
     """
     Modèle pour les types d'alertes météo.
