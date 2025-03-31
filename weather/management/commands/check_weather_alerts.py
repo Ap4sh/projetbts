@@ -1,7 +1,7 @@
 import logging
 from django.core.management.base import BaseCommand
 from django.utils import timezone
-from weather.models import Alert, TypeAlert, CustomUser
+from weather.models import Alert, TypeAlert, CustomUser, Departments
 from weather.services.weather_api import OpenWeatherMapService, MAIN_FRENCH_CITIES
 from datetime import datetime, timedelta
 
@@ -298,17 +298,33 @@ class Command(BaseCommand):
         ).first()
         
         if not existing_alert:
-            # Créer l'alerte
-            alert = Alert.objects.create(
-                fk_type=alert_type,
-                region=region,
-                description=description,
-                active=1,
-                date_alert=date
-            )
-            self.stdout.write(self.style.SUCCESS(
-                f"Nouvelle alerte créée pour {region}: {alert_type.label}"
-            ))
-            return alert
+            try:
+                # Trouver un département valide pour cette région
+                department = Departments.objects.first()  # Utiliser le premier département disponible
+                
+                if not department:
+                    self.stdout.write(self.style.WARNING(
+                        f"Impossible de créer l'alerte : aucun département disponible"
+                    ))
+                    return None
+                
+                # Créer l'alerte
+                alert = Alert.objects.create(
+                    fk_type=alert_type,
+                    region=region,
+                    description=description,
+                    active=1,
+                    date_alert=date,
+                    department=department  # Utiliser le département trouvé
+                )
+                self.stdout.write(self.style.SUCCESS(
+                    f"Nouvelle alerte créée pour {region}: {alert_type.label}"
+                ))
+                return alert
+            except Exception as e:
+                self.stdout.write(self.style.ERROR(
+                    f"Erreur lors de la création de l'alerte: {str(e)}"
+                ))
+                return None
         
         return None 

@@ -33,7 +33,7 @@
 <!-- navigation principale -->
 <nav class="navbar bg-base-200 sticky top-0 z-50 shadow-md">
     <div class="navbar-start">
-        <a href="/" class="btn btn-ghost text-xl">Météo France</a>
+        <a href="{% url 'weather:home' %}" class="btn btn-ghost text-xl">Météo France</a>
     </div>
 
     <div class="navbar-end">
@@ -51,10 +51,10 @@
 
         <div class="hidden lg:flex mr-4">
             <ul class="menu menu-horizontal px-1">
-                <li><a href="/" class="{% if request.path == '/' %}active{% endif %}">Accueil</a></li>
-                <li><a href="/alerts/" class="{% if request.path == '/alerts/' %}active{% endif %}">Alertes</a></li>
+                <li><a href="{% url 'weather:home' %}" class="{% if request.path == '/' %}active{% endif %}">Accueil</a></li>
+                <li><a href="{% url 'weather:alerts' %}" class="{% if request.path == '/alerts/' %}active{% endif %}">Alertes</a></li>
                 {% if user.is_authenticated %}
-                <li><a href="/profile/" class="{% if request.path == '/profile/' %}active{% endif %}">Profil</a></li>
+                <li><a href="{% url 'weather:profile' %}" class="{% if request.path == '/profile/' %}active{% endif %}">Profil</a></li>
                 {% endif %}
             </ul>
         </div>
@@ -67,13 +67,12 @@
                 </div>
             </div>
             <ul tabindex="0" class="mt-3 z-[1] p-2 shadow menu menu-sm dropdown-content bg-base-100 rounded-box w-52">
-                <li><a href="/profile/">Profil</a></li>
-                <li><a href="/settings/">Paramètres</a></li>
-                <li><a href="/logout/">Déconnexion</a></li>
+                <li><a href="{% url 'weather:profile' %}">Profil</a></li>
+                <li><a href="{% url 'weather:logout' %}">Déconnexion</a></li>
             </ul>
         </div>
         {% else %}
-        <a href="/login/" class="btn btn-primary">Connexion</a>
+        <a href="{% url 'weather:login' %}" class="btn btn-primary">Connexion</a>
         {% endif %}
 
         <!-- menu hamburger pour mobile -->
@@ -84,13 +83,13 @@
                 </svg>
             </div>
             <ul tabindex="0" class="menu menu-sm dropdown-content mt-3 z-[1] p-2 shadow bg-base-100 rounded-box w-52 right-0">
-                <li><a href="/" class="{% if request.path == '/' %}active{% endif %}">Accueil</a></li>
-                <li><a href="/alerts/" class="{% if request.path == '/alerts/' %}active{% endif %}">Alertes</a></li>
+                <li><a href="{% url 'weather:home' %}" class="{% if request.path == '/' %}active{% endif %}">Accueil</a></li>
+                <li><a href="{% url 'weather:alerts' %}" class="{% if request.path == '/alerts/' %}active{% endif %}">Alertes</a></li>
                 {% if user.is_authenticated %}
-                <li><a href="/profile/" class="{% if request.path == '/profile/' %}active{% endif %}">Profil</a></li>
-                <li><a href="/logout/">Déconnexion</a></li>
+                <li><a href="{% url 'weather:profile' %}" class="{% if request.path == '/profile/' %}active{% endif %}">Profil</a></li>
+                <li><a href="{% url 'weather:logout' %}">Déconnexion</a></li>
                 {% else %}
-                <li><a href="/login/" class="{% if request.path == '/login/' %}active{% endif %}">Connexion</a></li>
+                <li><a href="{% url 'weather:login' %}" class="{% if request.path == '/login/' %}active{% endif %}">Connexion</a></li>
                 {% endif %}
             </ul>
         </div>

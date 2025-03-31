@@ -1,6 +1,6 @@
 from django.shortcuts import render, redirect
 from django.contrib.auth.decorators import login_required
-from django.contrib.auth import authenticate, login
+from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.models import User
 from django.http import JsonResponse, HttpResponse
 from .models import Alert, CustomUser, TypeAlert, Cities
@@ -79,10 +79,16 @@ def login_view(request):
         user = authenticate(request, username=email, password=password)
         if user is not None:
             login(request, user)
-            return redirect('weather:profile')
+            next_url = request.GET.get('next', 'weather:profile')
+            return redirect(next_url)
         else:
             messages.error(request, "Email ou mot de passe incorrect.")
     return render(request, 'weather/login.html')
+
+def logout_view(request):
+    logout(request)
+    messages.success(request, "Vous avez été déconnecté avec succès.")
+    return redirect('weather:home')
 
 def register(request):
     if request.method == "POST":
@@ -95,12 +101,25 @@ def register(request):
             return render(request, 'weather/register.html')
         
         try:
-            city = Cities.objects.get(label=city_name)
+            # Recherche insensible à la casse
+            city = Cities.objects.filter(label__iexact=city_name).first()
+            if not city and city_name:
+                # Recherche partielle si pas de correspondance exacte
+                city = Cities.objects.filter(label__icontains=city_name).first()
+            
+            if not city:
+                # Si aucune ville n'est trouvée, utilisez Paris comme valeur par défaut
+                city = Cities.objects.filter(label__iexact='Paris').first()
+                if not city:
+                    # Au cas où Paris n'existerait pas dans la base de données
+                    city = Cities.objects.first()
+                messages.warning(request, f"La ville spécifiée n'a pas été trouvée. Nous avons utilisé {city.label} comme ville par défaut.")
+            
             user = CustomUser.objects.create_user(email=email, password=password, city=city)
             login(request, user)
             return redirect('weather:profile')
-        except Cities.DoesNotExist:
-            messages.error(request, "La ville spécifiée n'existe pas.")
+        except Exception as e:
+            messages.error(request, f"Erreur lors de la création du compte: {str(e)}")
             return render(request, 'weather/register.html')
             
     return render(request, 'weather/register.html')

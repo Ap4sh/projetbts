@@ -92,6 +92,16 @@ DATABASES = {
     }
 }
 
+# Désactiver les migrations automatiques
+MIGRATION_MODULES = {
+    'auth': None,
+    'contenttypes': None,
+    'default': None,
+    'sessions': None,
+    'weather': None,
+    'admin': None,
+}
+
 
 # Password validation
 # https://docs.djangoproject.com/en/5.1/ref/settings/#auth-password-validators
@@ -136,6 +146,9 @@ STATIC_ROOT = BASE_DIR / 'staticfiles'
 # Configuration des médias
 MEDIA_URL = 'media/'
 MEDIA_ROOT = BASE_DIR / 'media'
+
+# Configuration du modèle utilisateur personnalisé
+AUTH_USER_MODEL = 'weather.CustomUser'
 
 # API Météo France
 METEO_FRANCE_API_KEY = os.getenv('METEO_FRANCE_API_KEY')
