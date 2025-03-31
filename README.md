@@ -12,7 +12,7 @@ Application de météo en temps réel avec alertes météorologiques.
 
 1. Cloner le dépôt :
 ```bash
-git clone [URL_DU_REPO]
+git clone https://github.com/Ap4sh/projetbts/
 cd projetbts
 ```
 
