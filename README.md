@@ -1,6 +1,90 @@
-# projetbts
+# Projet Météo BTS
 
-Projet BTS django
+Application de météo en temps réel avec alertes météorologiques.
+
+## Prérequis
+
+- Docker
+- Docker Compose
+- Git
+
+## Installation
+
+1. Cloner le dépôt :
+```bash
+git clone [URL_DU_REPO]
+cd projetbts
+```
+
+2. Lancer l'application :
+```bash
+./start.sh
+```
+
+## Structure du projet
+
+```
+projetbts/
+├── weather/                 # Application Django principale
+│   ├── migrations/         # Migrations de la base de données
+│   ├── templates/         # Templates HTML
+│   ├── static/           # Fichiers statiques
+│   ├── models.py         # Modèles de données
+│   ├── views.py          # Vues de l'application
+│   └── services/         # Services externes (API météo)
+├── meteo/                 # Configuration Django
+├── docker/               # Fichiers Docker
+├── .env                  # Variables d'environnement (versionné)
+├── docker-compose.yml   # Configuration Docker Compose
+├── requirements.txt     # Dépendances Python
+└── start.sh            # Script de démarrage
+```
+
+## Fonctionnalités
+
+- Affichage de la météo en temps réel pour les principales villes françaises
+- Prévisions météo sur 5 jours
+- Système d'alertes météorologiques
+- Interface utilisateur responsive
+- Authentification utilisateur
+- Profil personnalisé par ville
+
+## Accès à l'application
+
+- Interface principale : http://localhost:8000
+- Interface d'administration : http://localhost:8000/admin
+  - Utilisateur : admin
+  - Mot de passe : [configuré dans .env]
+
+## Développement
+
+Pour contribuer au projet :
+
+1. Créer une branche pour votre fonctionnalité :
+```bash
+git checkout -b feature/nom-de-la-fonctionnalite
+```
+
+2. Commiter vos changements :
+```bash
+git add .
+git commit -m "Description des changements"
+```
+
+3. Pousser les changements :
+```bash
+git push origin feature/nom-de-la-fonctionnalite
+```
+
+## Maintenance
+
+- Les migrations de la base de données sont gérées automatiquement par le script `start.sh`
+- Les logs sont disponibles via `docker-compose logs -f`
+- Pour redémarrer l'application : `./start.sh`
+
+## Licence
+
+[Votre licence ici]
 
 # Utilisation du git
 
@@ -24,7 +108,6 @@ git push -u origin main
 
 # si vs avez un pb dites moi
 ```
-
 
 # theorie
 
@@ -65,12 +148,7 @@ git clone git@github.com:Ap4sh/projetbts.git
 cd projetbts
 ```
 
-2. faire le fichier env
-```bash
-cp .env.example .env
-```
-
-3. docker de base
+2. docker de base
 ```bash
 # stop les contenurs qui tournent
 docker-compose down -v
@@ -82,7 +160,7 @@ docker-compose build
 docker-compose up -d
 ```
 
-4. faire superuser django
+3. faire superuser django
 ```bash
 docker-compose exec web python manage.py createsuperuser
 ```

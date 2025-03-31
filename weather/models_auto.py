@@ -13,7 +13,7 @@ class Alerts(models.Model):
     active = models.IntegerField(blank=True, null=True)
     date_alert = models.DateField(blank=True, null=True)
     fk_type = models.ForeignKey('TypeAlert', models.DO_NOTHING, db_column='fk_type')
-    region = models.ForeignKey('Regions', models.DO_NOTHING, db_column='region')
+    department = models.ForeignKey('Departments', models.DO_NOTHING, db_column='department')
 
     class Meta:
         managed = False

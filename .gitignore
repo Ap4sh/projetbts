@@ -1,1 +1,69 @@
-.idea/*
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Django
+*.log
+local_settings.py
+db.sqlite3
+db.sqlite3-journal
+media/
+static/
+
+# Migrations
+weather/migrations/0*.py
+!weather/migrations/__init__.py
+
+# Environnement virtuel
+venv/
+env/
+ENV/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+.DS_Store
+
+# Docker
+.docker/
+docker-compose.override.yml
+
+# Base de données
+*.sqlite3
+*.db
+
+# Fichiers temporaires
+*.tmp
+*.bak
+*.swp
+*~
+
+# Fichiers de logs
+logs/
+*.log
+
+# Fichiers de cache
+.cache/
+.pytest_cache/
+.coverage
+htmlcov/

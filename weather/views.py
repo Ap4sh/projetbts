@@ -3,13 +3,14 @@ from django.contrib.auth.decorators import login_required
 from django.contrib.auth import authenticate, login
 from django.contrib.auth.models import User
 from django.http import JsonResponse, HttpResponse
-from .models import Alert, CustomUser, TypeAlert
+from .models import Alert, CustomUser, TypeAlert, Cities
 from .services.weather_api import OpenWeatherMapService, MAIN_FRENCH_CITIES, MeteoFranceVigilanceService
 from datetime import datetime, timedelta
 from django.utils import timezone
 from django.db.models import Q
 import logging
 from django.conf import settings
+from django.contrib import messages
 
 
 logger = logging.getLogger(__name__)
@@ -51,27 +52,20 @@ def home(request):
     
     return render(request, 'weather/home.html', context)
 
-#@login_required
+@login_required
 def profile(request):
-    # Récupérer l'utilisateur personnalisé correspondant à l'utilisateur Django
-    custom_user = None
-    # try:
-    #     custom_user = CustomUser.objects.get(email=request.user.email)
-    # except CustomUser.DoesNotExist:
-    #     pass
-    
     weather_data = None
     forecast_data = None
-    if custom_user and custom_user.city:
+    
+    if request.user.city:
         # Récupérer les données météo pour la ville de l'utilisateur
         weather_service = OpenWeatherMapService()
-        weather_data = weather_service.get_current_weather(custom_user.city)
+        weather_data = weather_service.get_current_weather(request.user.city.label)
         
         # Récupérer les prévisions pour les prochains jours
-        forecast_data = weather_service.get_forecast(custom_user.city, days=5)
+        forecast_data = weather_service.get_forecast(request.user.city.label, days=5)
     
     context = {
-        'custom_user': custom_user,
         'weather_data': weather_data,
         'forecast_data': forecast_data
     }
@@ -79,32 +73,37 @@ def profile(request):
     return render(request, 'weather/profile.html', context)
 
 def login_view(request):
-    if request.method == "POST" :
+    if request.method == "POST":
         email = request.POST.get("email")
         password = request.POST.get("password")
-        if CustomUser.objects.filter(email = email, password = password).exists() :
-            return redirect(request, 'profile.html')          
-    return render(request, 'login.html')
+        user = authenticate(request, username=email, password=password)
+        if user is not None:
+            login(request, user)
+            return redirect('weather:profile')
+        else:
+            messages.error(request, "Email ou mot de passe incorrect.")
+    return render(request, 'weather/login.html')
 
 def register(request):
-    if request.method == "POST" :
+    if request.method == "POST":
         email = request.POST.get("email")
         password = request.POST.get("password")
-        city = request.POST.get("city")
-        if CustomUser.objects.filter(email = email).exists() :
-            messages = ["Un compte utilisateur est déjà associé à cette adresse mail."]
-            context = {
-                'messages' : messages
-            }
-            return render(request, 'register.html', context)
-        else : 
-            CustomUser.objects.create_user(email = email, password = password, city = city)
-            custom_user = CustomUser.objects.get(email = request.user.email)
-            context = {
-                'custom_user' : custom_user
-            }
-            return redirect(request, 'profile.html', context)
-    return render(request, 'register.html')
+        city_name = request.POST.get("city")
+        
+        if CustomUser.objects.filter(email=email).exists():
+            messages.error(request, "Un compte utilisateur est déjà associé à cette adresse mail.")
+            return render(request, 'weather/register.html')
+        
+        try:
+            city = Cities.objects.get(label=city_name)
+            user = CustomUser.objects.create_user(email=email, password=password, city=city)
+            login(request, user)
+            return redirect('weather:profile')
+        except Cities.DoesNotExist:
+            messages.error(request, "La ville spécifiée n'existe pas.")
+            return render(request, 'weather/register.html')
+            
+    return render(request, 'weather/register.html')
 
 
 
