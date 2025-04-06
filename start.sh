@@ -57,7 +57,8 @@ docker-compose exec web mkdir -p /app/static
 
 # Collecte des fichiers statiques
 echo -e "\n📦 Collecte des fichiers statiques..."
-docker-compose exec web python manage.py collectstatic --noinput
+# docker-compose exec web python manage.py collectstatic --noinput
+echo "⚠️ Collecte des fichiers statiques désactivée pour éviter la création du dossier staticfiles"
 
 # Afficher un message de succès
 echo -e "\n✅ TERMINÉ : L'application a été redémarrée avec succès !"

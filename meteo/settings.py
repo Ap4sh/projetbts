@@ -141,7 +141,8 @@ STATIC_URL = 'static/'
 STATICFILES_DIRS = [
     BASE_DIR / 'static'
 ]
-STATIC_ROOT = BASE_DIR / 'staticfiles'
+# Commenté pour éviter la création du dossier staticfiles
+# STATIC_ROOT = BASE_DIR / 'staticfiles'
 
 # Configuration des médias
 MEDIA_URL = 'media/'
