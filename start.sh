@@ -40,9 +40,9 @@ sleep 15
 echo -e "\n📊 Initialisation des tables de base de données..."
 docker-compose exec -T db mysql -u root -proot_password < db_creation.sql
 
-# Exécuter le script de réparation
+# Exécuter le script d'initialisation personnalisé
 echo -e "\n🔧 Application des correctifs à la base de données..."
-docker-compose run --rm web python fix_database.py
+docker-compose run --rm -e DB_HOST=db -e DB_NAME=meteo -e DB_USER=root -e DB_PASSWORD=root_password web python init_db.py --drop
 
 # Démarrer le service web
 echo -e "\n🚀 ÉTAPE 6/6 : Démarrage du service web..."
@@ -55,24 +55,15 @@ sleep 5
 echo -e "\n📁 Création du dossier static..."
 docker-compose exec web mkdir -p /app/static
 
-# Exécuter init_django.py pour configurer les modèles
-echo -e "\n🔧 Configuration des modèles Django..."
-docker-compose exec web python init_django.py
-
-# Créer un utilisateur admin Django si nécessaire
-echo -e "\n👤 Création de l'utilisateur admin Django..."
-docker-compose exec -T web bash -c "export \$(cat .env | grep DJANGO_ADMIN | xargs) && python create_admin.py"
-
-# Vérifier les alertes et finaliser
-echo -e "\n✅ Finalisation..."
-docker-compose exec web python manage.py check_weather_alerts
+# Collecte des fichiers statiques
+echo -e "\n📦 Collecte des fichiers statiques..."
+docker-compose exec web python manage.py collectstatic --noinput
 
 # Afficher un message de succès
 echo -e "\n✅ TERMINÉ : L'application a été redémarrée avec succès !"
 echo "Pour accéder à l'application, ouvrez http://localhost:8000 dans votre navigateur."
-echo "Pour accéder à l'interface d'administration, ouvrez http://localhost:8000/admin/"
-echo "   - Utilisateur : $(grep DJANGO_ADMIN_USERNAME .env | cut -d= -f2)"
-echo "   - Mot de passe : $(grep DJANGO_ADMIN_PASSWORD .env | cut -d= -f2)"
+echo "Pour accéder à l'interface d'administration, utilisez un compte déjà créé"
+echo "ou créez-en un en vous inscrivant."
 echo -e "Pour voir les logs en temps réel, exécutez : docker-compose logs -f"
 echo "====================================================="
 

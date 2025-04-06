@@ -76,16 +76,40 @@ def login_view(request):
     if request.method == "POST":
         email = request.POST.get("email")
         password = request.POST.get("password")
-        user = authenticate(request, username=email, password=password)
-        if user is not None:
-            login(request, user)
-            next_url = request.GET.get('next', 'weather:profile')
-            return redirect(next_url)
-        else:
-            messages.error(request, "Email ou mot de passe incorrect.")
+        
+        try:
+            # Vérifier d'abord si l'utilisateur existe
+            user_exists = CustomUser.objects.filter(email=email).exists()
+            
+            if not user_exists:
+                messages.error(request, "Aucun utilisateur trouvé avec cet email.")
+                return render(request, 'weather/login.html')
+                
+            # Récupérer l'utilisateur directement
+            user = CustomUser.objects.get(email=email)
+            
+            # Vérifier le mot de passe manuellement
+            if user.password == password:
+                # Utiliser la fonction login() de Django pour gérer l'authentification
+                # Définir user.backend car login() en a besoin
+                user.backend = 'weather.auth.EmailBackend'
+                login(request, user)
+                
+                # Rediriger l'utilisateur
+                next_url = request.GET.get('next', 'weather:profile')
+                return redirect(next_url)
+            else:
+                messages.error(request, "Mot de passe incorrect.")
+                
+        except Exception as e:
+            # Capturer et afficher toute erreur qui pourrait survenir
+            messages.error(request, f"Erreur lors de la connexion: {str(e)}")
+            print(f"Erreur d'authentification: {e}")
+    
     return render(request, 'weather/login.html')
 
 def logout_view(request):
+    # Utiliser la fonction logout() de Django
     logout(request)
     messages.success(request, "Vous avez été déconnecté avec succès.")
     return redirect('weather:home')
@@ -102,25 +126,38 @@ def register(request):
         
         try:
             # Recherche insensible à la casse
-            city = Cities.objects.filter(label__iexact=city_name).first()
-            if not city and city_name:
-                # Recherche partielle si pas de correspondance exacte
-                city = Cities.objects.filter(label__icontains=city_name).first()
+            city = None
+            if city_name:
+                city = Cities.objects.filter(label__iexact=city_name).first()
+                if not city:
+                    # Recherche partielle si pas de correspondance exacte
+                    city = Cities.objects.filter(label__icontains=city_name).first()
             
             if not city:
                 # Si aucune ville n'est trouvée, utilisez Paris comme valeur par défaut
                 city = Cities.objects.filter(label__iexact='Paris').first()
                 if not city:
-                    # Au cas où Paris n'existerait pas dans la base de données
+                    # Si Paris n'existe pas, prendre la première ville disponible
                     city = Cities.objects.first()
-                messages.warning(request, f"La ville spécifiée n'a pas été trouvée. Nous avons utilisé {city.label} comme ville par défaut.")
+                
+                if not city:
+                    messages.error(request, "Erreur: Aucune ville n'est disponible dans la base de données.")
+                    return render(request, 'weather/register.html')
+                
+                if city_name:
+                    messages.warning(request, f"La ville '{city_name}' n'a pas été trouvée. Nous avons utilisé '{city.label}' comme ville par défaut.")
             
+            # Créer l'utilisateur
             user = CustomUser.objects.create_user(email=email, password=password, city=city)
-            login(request, user)
-            return redirect('weather:profile')
+            if user:
+                # Utiliser la fonction login() de Django pour connecter l'utilisateur après création
+                user.backend = 'weather.auth.EmailBackend'
+                login(request, user)
+                return redirect('weather:profile')
+            else:
+                messages.error(request, "Erreur lors de la création du compte utilisateur.")
         except Exception as e:
             messages.error(request, f"Erreur lors de la création du compte: {str(e)}")
-            return render(request, 'weather/register.html')
             
     return render(request, 'weather/register.html')
 

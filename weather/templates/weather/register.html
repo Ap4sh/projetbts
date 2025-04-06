@@ -23,8 +23,6 @@
     .htmx-request .htmx-indicator {
         display: inline-block;
     }
-
-
 </style>
 {% endblock extra_css %}
 
@@ -39,7 +37,7 @@
                 <div id="login-messages">
                     {% if messages %}
                     {% for message in messages %}
-                    <div class="alert alert-error py-2 mb-4">
+                    <div class="alert {% if message.tags == 'error' %}alert-error{% elif message.tags == 'warning' %}alert-warning{% else %}alert-info{% endif %} py-2 mb-4">
                         <svg xmlns="http://www.w3.org/2000/svg" class="stroke-current shrink-0 h-5 w-5" fill="none" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
                         <span>{{ message }}</span>
                     </div>
@@ -47,14 +45,7 @@
                     {% endif %}
                 </div>
 
-                <form
-                        hx-post="{% url 'weather:register' %}"
-                        hx-target="#login-messages"
-                        hx-swap="innerHTML"
-                        hx-indicator="#login-spinner"
-                        hx-trigger="submit"
-                        hx-on::after-request="if(event.detail.successful) { window.location.href = '{% url 'weather:profile' %}'; }">
-
+                <form method="POST" action="{% url 'weather:register' %}">
                     {% csrf_token %}
 
                     <div class="form-control">
@@ -85,6 +76,12 @@
                         </button>
                     </div>
                 </form>
+
+                <div class="divider">OU</div>
+
+                <div class="form-control">
+                    <a href="{% url 'weather:login' %}" class="btn btn-outline">Se connecter</a>
+                </div>
             </div>
         </div>
     </div>

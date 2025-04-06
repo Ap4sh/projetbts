@@ -149,6 +149,10 @@ MEDIA_ROOT = BASE_DIR / 'media'
 
 # Configuration du modèle utilisateur personnalisé
 AUTH_USER_MODEL = 'weather.CustomUser'
+AUTHENTICATION_BACKENDS = [
+    'weather.auth.EmailBackend',
+    'django.contrib.auth.backends.ModelBackend',
+]
 
 # API Météo France
 METEO_FRANCE_API_KEY = os.getenv('METEO_FRANCE_API_KEY')

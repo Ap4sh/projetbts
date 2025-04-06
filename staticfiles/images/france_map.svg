@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 600">
+  <!-- Contour simplifié de la France -->
+  <path d="M300,100 L200,150 L150,200 L100,300 L150,400 L200,450 L300,500 L400,450 L450,400 L500,300 L450,200 L400,150 Z" 
+        fill="#f0f0f0" stroke="#cccccc" stroke-width="2" />
+  
+  <!-- Points pour les principales villes -->
+  <!-- Paris -->
+  <circle cx="300" cy="250" r="5" fill="#3498db" id="Paris" />
+  <text x="310" y="250" font-size="12" fill="#333333">Paris</text>
+  
+  <!-- Marseille -->
+  <circle cx="350" cy="420" r="5" fill="#3498db" id="Marseille" />
+  <text x="360" y="420" font-size="12" fill="#333333">Marseille</text>
+  
+  <!-- Lyon -->
+  <circle cx="330" cy="350" r="5" fill="#3498db" id="Lyon" />
+  <text x="340" y="350" font-size="12" fill="#333333">Lyon</text>
+  
+  <!-- Toulouse -->
+  <circle cx="250" cy="400" r="5" fill="#3498db" id="Toulouse" />
+  <text x="260" y="400" font-size="12" fill="#333333">Toulouse</text>
+  
+  <!-- Nice -->
+  <circle cx="400" cy="400" r="5" fill="#3498db" id="Nice" />
+  <text x="410" y="400" font-size="12" fill="#333333">Nice</text>
+  
+  <!-- Nantes -->
+  <circle cx="200" cy="300" r="5" fill="#3498db" id="Nantes" />
+  <text x="210" y="300" font-size="12" fill="#333333">Nantes</text>
+  
+  <!-- Strasbourg -->
+  <circle cx="400" cy="200" r="5" fill="#3498db" id="Strasbourg" />
+  <text x="410" y="200" font-size="12" fill="#333333">Strasbourg</text>
+  
+  <!-- Montpellier -->
+  <circle cx="300" cy="420" r="5" fill="#3498db" id="Montpellier" />
+  <text x="310" y="420" font-size="12" fill="#333333">Montpellier</text>
+  
+  <!-- Bordeaux -->
+  <circle cx="220" cy="350" r="5" fill="#3498db" id="Bordeaux" />
+  <text x="230" y="350" font-size="12" fill="#333333">Bordeaux</text>
+  
+  <!-- Lille -->
+  <circle cx="300" cy="150" r="5" fill="#3498db" id="Lille" />
+  <text x="310" y="150" font-size="12" fill="#333333">Lille</text>
+</svg> 
