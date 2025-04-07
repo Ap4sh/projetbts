@@ -17,7 +17,7 @@ echo -e "\n🛑 ÉTAPE 1/6 : Arrêt des conteneurs en cours..."
 docker-compose down -v
 
 # Récupérer les derniers changements du dépôt Git
-echo -e "\n🔄 ÉTAPE 2/6 : Récupération des derniers changements du dépôt Git..."
+echo -e "\n🔄 ÉTAPE 2/6 : Récupération des derniers changements du dépôt Git...(edit : pour le moment, pas de récupération)"
 #git pull --rebase origin main
 
 # Reconstruire les images Docker
