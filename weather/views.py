@@ -56,7 +56,9 @@ def home(request):
 def profile(request):
     weather_data = None
     forecast_data = None
+    city = request.user.city
     
+
     if request.user.city:
         # Récupérer les données météo pour la ville de l'utilisateur
         weather_service = OpenWeatherMapService()
@@ -65,9 +67,44 @@ def profile(request):
         # Récupérer les prévisions pour les prochains jours
         forecast_data = weather_service.get_forecast(request.user.city.label, days=5)
     
+        weather_service = OpenWeatherMapService()
+    
+    # Récupérer les données météo actuelles
+    current_weather = weather_service.get_current_weather(city)
+    
+    # Si la ville n'est pas trouvée, afficher une page 404 personnalisée
+    if not current_weather:
+        return render(request, 'weather/404.html', status=404)
+    
+    # Récupérer les prévisions pour les 5 prochains jours
+    forecast = weather_service.get_forecast(city, days=5)
+    
+    # Si des coordonnées sont disponibles, récupérer les alertes
+    api_alerts = []
+    if current_weather and 'coordinates' in current_weather:
+        lat = current_weather['coordinates']['lat']
+        lon = current_weather['coordinates']['lon']
+        api_alerts = weather_service.get_weather_alerts(lat, lon)
+    
+    # Récupérer également les alertes de la base de données pour cette région
+    db_alerts = []
+    if current_weather and 'country' in current_weather:
+        # Rechercher des alertes pour la région correspondant à la ville
+        db_alerts = Alert.objects.filter(
+            region__icontains=city,
+            active=1
+        ).order_by('-date_alert')
+    
+
     context = {
         'weather_data': weather_data,
-        'forecast_data': forecast_data
+        'forecast_data': forecast_data,
+        'user_email' : request.user.email,
+        'user_city' : city,
+        'current_weather': current_weather,
+        'forecast': forecast,
+        'api_alerts': api_alerts,
+        'db_alerts': db_alerts
     }
     
     return render(request, 'weather/profile.html', context)
@@ -76,6 +113,7 @@ def login_view(request):
     if request.method == "POST":
         email = request.POST.get("email")
         password = request.POST.get("password")
+        city = request.POST.get("city")
         
         try:
             # Vérifier d'abord si l'utilisateur existe
