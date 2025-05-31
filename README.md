@@ -105,14 +105,13 @@ git commit -m "raison"
 
 # push le commit sur la branche main
 git push -u origin main
-
-# si vs avez un pb dites moi
 ```
 
 # theorie
 
 Partie BDD
-![bdd](https://i.imgur.com/5lS7Yyw.png)
+![db_projetbts](https://github.com/user-attachments/assets/b66be216-cc8a-43fd-8a44-f4877aec4704)
+
 
 Diagramme de gantt
 ![gantt](https://i.imgur.com/eJyT9hq.png)
@@ -150,7 +149,7 @@ cd projetbts
 
 2. docker de base
 ```bash
-# stop les contenurs qui tournent
+# stop les conteneurs qui tournent
 docker-compose down -v
 
 # build les imgs
@@ -203,11 +202,9 @@ projetbts/
 ├── meteo/              # cfg django
 ├── weather/            # app meteo
 ├── templates/          # template globaux
-├── static/             # static? ta mere si tu me demandes c quoi
+├── static/             # static
 ├── manage.py          # scr gestion django
 ├── Dockerfile         # cfg docker
 └── docker-compose.yml # cfg docker compose (oui oui)
 ```
-
-Atm rien de "vraiment" fonctionnel mais au moins on pose les bases et maintenant chacun peut dév sa partie tranquille.
 
